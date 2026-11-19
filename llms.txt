@@ -1,0 +1,13 @@
+# Arena de Arton
+
+> Simulador de combate tático por turnos de Tormenta 20, no navegador. Grátis, sem cadastro, homenagem de fã sem fins lucrativos (obra não oficial, não afiliada à Jambô Editora).
+
+- Jogar: https://arena-de-arton.vercel.app/
+- Código (MIT): https://github.com/javaijafoi/arena-de-arton
+- Portfólio do autor: https://javaijafoi.vercel.app
+
+## O que é
+Grade 16x12 (1,5 m por quadrado), 9 heróis, magias até o 4º círculo, escada de 10 encontros (nível 1 a 14), inimigos com IA, manobras (agarrar, empurrar, derrubar), voo, cegueira e ataque de oportunidade opcional. Motor de regras separado da interface (js/rules.js).
+
+## Aviso
+Tormenta20 e seu universo pertencem à Jambô Editora. Este projeto não inclui ilustrações oficiais.

@@ -1,0 +1,4 @@
+# Arte oficial/local nunca vai para o repositório público
+tokens/
+*.jpg
+node_modules/
