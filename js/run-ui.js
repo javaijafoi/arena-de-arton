@@ -8,7 +8,8 @@
   const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* ok */ } } };
   const S = { run: store.get('arena.run', null), meta: Object.assign(RUN.novoMeta(), store.get('arena.meta', {})), sel: null, inv: null, pre: null, res: null };
   if (S.run && S.run.v !== 1) S.run = null;
-  const salvar = () => { if (S.run) store.set('arena.run', S.run); else store.del('arena.run'); store.set('arena.meta', S.meta); };
+  const salvar = () => { if (S.run) store.set('arena.run', S.run); else store.del('arena.run'); store.set('arena.meta', S.meta); if (window.NUVEM) window.NUVEM.agendar(S.meta, S.run); };
+  function aplicarNuvem(d) { if (!d) return; S.meta = Object.assign(RUN.novoMeta(), d.meta || {}); S.run = d.run && d.run.v === 1 ? d.run : null; if (S.run) store.set('arena.run', S.run); else store.del('arena.run'); store.set('arena.meta', S.meta); }
   const H = hid => D.HEROIS.find(h => h.id === hid);
   const I = id => RUN.ITENS[id];
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -34,15 +35,33 @@
     const m = S.meta; const prox = RUN.MARCOS.find(x => m.pontos < x.pts);
     box.innerHTML = `<div class="rb-l"><h3>Modo Roguelike · Andar 1: Estrada e Ruínas</h3>
       <p>Monte um grupo, atravesse o mapa do andar escolhendo o caminho e derrote o chefe. Ferimentos, poções e ouro passam de uma batalha para a outra. Se todos caírem, a run acaba, mas a pontuação fica e libera coisas novas.</p>
-      <div class="rb-stats"><span>🏅 <b>${m.pontos.toLocaleString('pt-BR')}</b> pontos</span><span>🎲 ${m.runs} runs · ${m.vitorias} vitórias</span>${prox ? `<span>Próximo marco: <b>${prox.nome}</b> em ${prox.pts.toLocaleString('pt-BR')}</span>` : ''}</div></div>
+      <div class="rb-stats"><span>🏅 <b>${m.pontos.toLocaleString('pt-BR')}</b> pontos</span><span>${nuvemTxt()}</span><span>🎲 ${m.runs} runs · ${m.vitorias} vitórias</span>${prox ? `<span>Próximo marco: <b>${prox.nome}</b> em ${prox.pts.toLocaleString('pt-BR')}</span>` : ''}</div></div>
       <div class="rb-b">${S.run && !S.run.fim ? `<button class="btn gold" id="rbCont">▶ Continuar run (nível ${S.run.nivel})</button><button class="btn" id="rbNova">Nova run</button>` : `<button class="btn gold" id="rbNova">⚔ Nova run</button>`}
       ${RUN.liberado(m, 'guilda') ? '<button class="btn" id="rbGuilda">🏛 Guilda</button>' : `<button class="btn" disabled title="Libera com ${RUN.MARCOS[0].pts} pontos">🔒 Guilda (${RUN.MARCOS[0].pts.toLocaleString('pt-BR')} pts)</button>`}</div>`;
+    if ($('rbNuvem')) $('rbNuvem').onclick = () => { clique(); telaNuvem(); };
     if ($('rbCont')) $('rbCont').onclick = () => { clique(); continuar(); };
     $('rbNova').onclick = () => { clique(); telaPre(); };
     if ($('rbGuilda')) $('rbGuilda').onclick = () => { clique(); telaGuilda(); };
     // a escada antiga vira "treino"
     const lad = $('ladder'); if (lad && lad.parentElement && !lad.parentElement.dataset.treino) { lad.parentElement.dataset.treino = 1; const h = lad.parentElement.querySelector('h3'); if (h) h.textContent = 'Treino: escada de batalhas (modo antigo)'; }
     const bc = $('bCamp'); if (bc) bc.textContent = '⚔ Treino: escada antiga';
+  }
+  function nuvemTxt() {
+    const N = window.NUVEM; if (!N) return '';
+    const t = { local: '💾 salvo neste aparelho', salvando: '☁ salvando…', nuvem: '☁ salvo na nuvem', erro: '⚠ sem conexão com a nuvem (salvo neste aparelho)' }[N.estado] || '';
+    return `<button class="lnk" id="rbNuvem">${t} · outro aparelho</button>`;
+  }
+  function telaNuvem(msg) {
+    const N = window.NUVEM;
+    let h = `<div class="rv-head"><h2>Seu progresso em outro aparelho</h2><div class="sp"></div><button class="btn" id="nVoltar">✕ Voltar</button></div>
+      <div class="rv-grid2"><div class="win box"><h3>Código deste aparelho</h3><p class="mut">O progresso (pontos, guilda e run em andamento) é salvo neste navegador e na nuvem. Para continuar em outro aparelho, copie este código e cole lá. Não compartilhe: quem tiver o código mexe no seu save.</p>
+      <div class="codigo" id="nCod">${esc(N.codigo())}</div><button class="btn gold" id="nCopiar">📋 Copiar código</button></div>
+      <div class="win box"><h3>Usar um código</h3><p class="mut">Cole o código do outro aparelho. O progresso daqui será trocado pelo de lá.</p>
+      <input id="nIn" class="inp" placeholder="cole o código aqui" autocomplete="off"><button class="btn gold" id="nUsar">Carregar progresso</button>${msg ? `<p class="${msg.ok ? 'okt' : 'redt'}">${esc(msg.txt)}</p>` : ''}</div></div>`;
+    mostrar(h, 'nuvem');
+    $('nVoltar').onclick = () => { clique(); voltarAoMenu(); };
+    $('nCopiar').onclick = () => { clique(); try { navigator.clipboard.writeText(N.codigo()); $('nCopiar').textContent = '✓ Copiado'; } catch (e) { const r = document.createRange(); r.selectNodeContents($('nCod')); getSelection().removeAllRanges(); getSelection().addRange(r); } };
+    $('nUsar').onclick = async () => { clique(); try { const d = await N.usarCodigo($('nIn').value); aplicarNuvem(d); telaNuvem({ ok: true, txt: `Progresso carregado: ${(S.meta.pontos || 0).toLocaleString('pt-BR')} pontos.` }); } catch (e) { telaNuvem({ ok: false, txt: e.message }); } };
   }
   function voltarAoMenu() { fecharRun(); A().G.modo = null; A().voltarMenu(); montarBlocoMenu(); }
 
@@ -336,5 +355,9 @@
   // o botão ☰ Menu fora da batalha volta ao menu principal
   $('tMenu').addEventListener('click', e => { if (!root.classList.contains('hidden')) { e.stopImmediatePropagation(); voltarAoMenu(); } }, true);
   montarBlocoMenu();
+  if (window.NUVEM) {
+    window.NUVEM.ouvir(() => { if (!$('menu').classList.contains('hidden')) montarBlocoMenu(); });
+    window.NUVEM.puxar().then(d => { if (d) { aplicarNuvem(d); if (!$('menu').classList.contains('hidden')) montarBlocoMenu(); } else if (!store.get('arena.salvoEm', 0) && (S.meta.runs || S.run)) salvar(); });
+  }
   window.RUNUI = { S, telaMapa, telaPre, telaGuilda, continuar, voltarDaBatalha, montarBlocoMenu, salvar };
 })();
