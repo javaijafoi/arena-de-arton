@@ -74,7 +74,7 @@
     pulseiras: { nome: 'Pulseiras da Celeridade', slot: 'acessorio', preco: 25500, ic: '⌚', magico: true, desc: '+2 Destreza.', ef: { des: 2 } },
   };
   const LOJA_FIXOS = ['pocao', 'racao', 'barraca'];
-  const LOJA_SORTEIO = ['pocao', 'pocaoMaior', 'oleo', 'protecao', 'granada', 'velocidade', 'corda', 'certeira', 'cruel', 'reforcada'];
+  const LOJA_SORTEIO = ['pocaoMaior', 'oleo', 'protecao', 'granada', 'velocidade', 'corda', 'certeira', 'cruel', 'reforcada'];
   const DROP_ELITE = ['sustento', 'luvas', 'manoplas', 'manto', 'torque', 'anelProtecao', 'certeiraCruel', 'flamejante', 'congelante', 'eletrica'];
   const DROP_CHEFE = ['vitalidade', 'robustez', 'cintoGigante', 'pulseiras', 'defensora', 'protetora', 'ameacadora', 'flamejante'];
   const DROP_COMUM = ['pocao', 'pocao', 'oleo', 'protecao', 'racao', 'pocaoMaior'];
@@ -395,7 +395,7 @@
       nome: 'O baú da torre caída', ic: '🗝',
       texto: 'Entre as pedras de uma torre desabada há um baú de ferro. A fechadura parece armada com uma agulha.',
       escolhas: [
-        { id: 'abrir', txt: 'Desarmar a armadilha e abrir', pericia: 'ladinagem', cd: 15, ok: (r, o) => { const it = escolher(o, ['pocaoMaior', 'granada', 'certeira', 'reforcada', 'velocidade']); darItem(r, it); const t = rolar(o, 3, 6, 0) * 10; r.ouro += t; return `Clique. O baú abre: T$ ${t} e ${ITENS[it].nome}.`; }, falha: (r, o) => { const v = rolar(o, 1, 6, 1); danoGrupo(r, 0); r.herois.filter(h => !h.morto)[0].dano += v; return `A agulha envenenada pica a mão de quem tentou (–${v} PV). O baú emperra.`; } },
+        { id: 'abrir', txt: 'Desarmar a armadilha e abrir', pericia: 'ladinagem', cd: 15, ok: (r, o) => { const it = escolher(o, ['pocaoMaior', 'granada', 'certeira', 'reforcada', 'velocidade']); darItem(r, it); const t = rolar(o, 3, 6, 0) * 10; r.ouro += t; return `Clique. O baú abre: T$ ${t} e ${ITENS[it].nome}.`; }, falha: (r, o) => { const v = rolar(o, 1, 6, 1); const h0 = r.herois.filter(h => !h.morto)[0]; h0.dano = Math.min(pvMaxDe(h0, r.nivel) - 1, h0.dano + v); return `A agulha envenenada pica a mão de quem tentou (–${v} PV). O baú emperra.`; } },
         { id: 'forcar', txt: 'Arrebentar a tampa', pericia: 'atletismo', cd: 17, ok: (r, o) => { const t = rolar(o, 2, 6, 0) * 10; r.ouro += t; return `A tampa cede com um estalo. Dentro, T$ ${t}.`; }, falha: (r, o) => { const v = rolar(o, 2, 6, 0); danoGrupo(r, Math.ceil(v / 2)); return `A agulha dispara um gás: todo o grupo tosse (–${Math.ceil(v / 2)} PV cada).`; } },
         { id: 'seguir', txt: 'Deixar o baú e seguir viagem', ok: () => 'Melhor não arriscar.' },
       ]

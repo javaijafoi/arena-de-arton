@@ -18,7 +18,7 @@ for (const cls of ['arcanista', 'clerigo', 'bardo']) {
       const r = R.executar(st, acao);
       const depois = st.unidades.map(o => o.pv + '/' + JSON.stringify(o.cond) + JSON.stringify(o.buff)).join();
       const mudou = antes !== depois || st.teia.length;
-      const ok = r.ok && mudou;
+      const ok = r.ok && (mudou || (!Object.keys(ap).length && /não é afetado/.test(st.log.slice(-1)[0] || ''))); // sem aprimoramento, ND alto pode não ser afetado
       if (!ok) falhas++;
       console.log(`${ok ? '✓' : '✗'} ${cls.padEnd(9)} ${M.nome.padEnd(26)} ${JSON.stringify(ap).padEnd(14)} ${r.ok ? '' : r.erro} ${st.log.slice(-2).join(' | ').slice(0, 110)}`);
     }
