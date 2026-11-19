@@ -125,7 +125,7 @@
     if (st.rodada <= 2 || perto) {
       if (pode('oracao') && !u.buff.oracao && aliados.filter(a => R.dist(u, a) <= 6).length >= 2) return { tipo: 'magia', magia: 'oracao', aprim: {} };
       if (pode('bencao') && !u.buff.bencao && !u.buff.oracao && aliados.filter(a => R.dist(u, a) <= 6 && !a.buff.bencao).length >= 3 && st.rodada <= 2) return { tipo: 'magia', magia: 'bencao', aprim: {} };
-      if (pode('armaEspiritual') && !u.buff.armaEspiritual && perto) {
+      if (pode('armaEspiritual') && !u.buff.armaEspiritual && perto && !(typeof process !== 'undefined' && process.env.NOAE)) {
         for (const ap of [{ ataque: 1, duas: 1, essencia: 1 }, { ataque: 1, duas: 1 }, { ataque: 1, def: 1 }, { ataque: 1 }, { def: 1 }, {}]) if (pode('armaEspiritual', ap)) return { tipo: 'magia', magia: 'armaEspiritual', aprim: ap };
       }
       if (pode('armaduraArcana') && !u.buff.defMagia && st.rodada <= 1) return { tipo: 'magia', magia: 'armaduraArcana', aprim: {} };
@@ -170,6 +170,26 @@
     return m;
   }
 
+  // itens do cinto (modo roguelike): poções de cura em quem está caído ou quase, granada em grupos, óleo/velocidade colado no inimigo
+  function usarCinto(st, u, ops, ini) {
+    const its = (ops.itens || []).filter(i => i.pode); if (!its.length) return null;
+    const cura = its.filter(i => i.id === 'pocao' || i.id === 'pocaoMaior').sort((a, b) => (a.id === 'pocaoMaior') - (b.id === 'pocaoMaior'));
+    for (const c of cura) {
+      const alvos = c.alvos.map(id => R.porId(st, id));
+      const caido = alvos.find(o => o.pv <= 0); if (caido) return { tipo: 'item', slot: c.k, alvo: caido.id };
+      if (alvos.includes(u) && fracao(u) < 0.3 && !(u.magias || []).includes('curarFerimentos')) return { tipo: 'item', slot: c.k, alvo: u.id };
+    }
+    const perto = ini.some(o => R.adjacente(u, o)) || (atiraDeLonge(u) && ini.some(o => R.visao(st, u, o).ve));
+    const g = its.find(i => i.id === 'granada');
+    if (g) {
+      let melhor = null;
+      for (const id of g.alvos) { const o = R.porId(st, id); const viz = st.unidades.filter(x => x.vivo && R.dist(x, o) <= 1); const ini2 = viz.filter(x => x.lado !== u.lado).length, ali = viz.filter(x => x.lado === u.lado).length; if (!ali && ini2 >= 2 && (!melhor || ini2 > melhor.n)) melhor = { n: ini2, id }; }
+      if (melhor) return { tipo: 'item', slot: g.k, alvo: melhor.id };
+    }
+    if (perto && u.acoes.movimento) for (const id of ['velocidade', 'oleo', 'protecao']) { const i = its.find(x => x.id === id); if (i && (id !== 'protecao' || ini.some(o => (o.magias || []).length))) return { tipo: 'item', slot: i.k, alvo: u.id }; }
+    return null;
+  }
+
   function proximaAcao(st) {
     const u = R.atual(st); if (!u || st.fim) return null;
     const ops = R.opcoes(st); if (!ops) return null;
@@ -179,6 +199,7 @@
     if (ops.apagar && u.pv < u.pvMax * 0.5) return { tipo: 'apagar' };
     const ini = vivosInimigos(st, u);
     if (!ini.length) return { tipo: 'fim' };
+    const item = usarCinto(st, u, ops, ini); if (item) return item;
     // arma espiritual sustentada: ação livre, golpeia sozinha
     if (ops.armaEspiritual && ops.armaEspiritual.length) {
       const alvo = ops.armaEspiritual.map(id => R.porId(st, id)).filter(o => !R.incapaz(o)).sort((a, b) => a.pv - b.pv)[0];

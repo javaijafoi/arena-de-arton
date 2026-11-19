@@ -41,4 +41,24 @@ for (const op of [false, true]) {
   ok(op ? aoo === 1 : aoo === 0, `${op ? 'com' : 'sem'} a regra opcional: ${aoo} ataque(s) de oportunidade ao fugir`);
   if (op) { c.reacao = 0; z.x = 5; z.y = 1; st.vez = st.ordem.indexOf('h0'); z.acoes = { padrao: true, movimento: true }; z.pv = 50; c.reacao = st.rodada; const r2 = R.executar(st, { tipo: 'mover', x: 2, y: 1 }); ok(!r2.ev.some(e => e.oportunidade), 'só um ataque de oportunidade por rodada'); }
 }
+// arma espiritual
+{ const { st, vez, u } = cena(['hana'], ['capanga', 'capanga']); const h = vez('h0'); const c = u('m0'); const c2 = u('m1'); h.x = 5; h.y = 1; c.x = 6; c.y = 1; c2.x = 5; c2.y = 2; h.pm = 50;
+  c.pvMax = c.pv = 999; c2.pvMax = c2.pv = 999; h.pvMax = h.pv = 999;
+  const r = R.executar(st, { tipo: 'magia', magia: 'armaEspiritual', aprim: { ataque: 1 } }); ok(r.ok && h.buff.armaEspiritual, 'Hana invoca a arma (sustentada)');
+  ok(R.opcoes(st).armaEspiritual.length >= 1, 'arma pode golpear sozinha um alvo em alcance curto');
+  const pv0 = c.pv; R.executar(st, { tipo: 'armaEspiritual', alvo: c.id }); ok(c.pv < pv0, `arma golpeia automaticamente (${pv0 - c.pv} de dano)`);
+  ok(!R.opcoes(st).armaEspiritual.length, 'só um golpe da arma por rodada');
+  R.executar(st, { tipo: 'fim' });
+  // capanga ataca: arma bloqueada (atacou), não contra-ataca
+  st.vez = st.ordem.indexOf('m0'); c.acoes = { padrao: true, movimento: true }; const p1 = c.pv; R.executar(st, { tipo: 'atacar', alvo: h.id }); ok(c.pv === p1, 'depois de golpear, não contra-ataca até o próximo turno');
+  // nova rodada, turno de Hana libera; dois ataques: só o primeiro sofre contra-ataque, mesmo errando
+  st.rodada++; st.vez = st.ordem.indexOf('h0'); h.buff.armaEspiritual.bloq = false; h.defBase = 99;
+  st.vez = st.ordem.indexOf('m0'); c.acoes = { padrao: true, movimento: true }; const a = c.pv; R.executar(st, { tipo: 'atacar', alvo: h.id }); ok(c.pv < a, 'contra-ataca mesmo quando o ataque erra');
+  st.vez = st.ordem.indexOf('m1'); c2.acoes = { padrao: true, movimento: true }; const b = c2.pv; R.executar(st, { tipo: 'atacar', alvo: h.id }); ok(c2.pv === b, 'contra-ataque só 1× por rodada'); }
+// posicionamento
+{ const { st } = cena(['mari', 'hana', 'zaldrin', 'aria'], ['capanga']); const z = R.zonaHerois(st); const hs = st.unidades.filter(o => o.lado === 'h');
+  ok(st.preparo && hs.every(o => z.some(c => c.x === o.x && c.y === o.y)), 'heróis começam dentro da zona');
+  const zal = R.porId(st, 'h2'), mari = R.porId(st, 'h0'); ok(zal.x < mari.x, 'arcanista começa atrás da guerreira');
+  const alvo = { x: mari.x, y: mari.y }; const antes = { x: zal.x, y: zal.y }; ok(R.reposicionar(st, 'h2', alvo.x, alvo.y) === null && zal.x === alvo.x && mari.x === antes.x && mari.y === antes.y, 'clicar numa casa ocupada troca os dois');
+  ok(R.reposicionar(st, 'h2', 15, 5) !== null, 'não pode sair da zona'); R.comecar(st); ok(R.reposicionar(st, 'h2', antes.x, antes.y) !== null, 'depois de começar, não reposiciona'); }
 console.log(falhas ? falhas + ' FALHAS' : 'tudo certo');

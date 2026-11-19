@@ -153,6 +153,15 @@ h1,h2,h3{font-family:Cinzel,Georgia,serif;margin:0;letter-spacing:.04em;text-wra
 .tok.voa:before{content:'';position:absolute;left:8px;right:8px;bottom:-2px;height:10px;border-radius:50%;background:#0006;filter:blur(2px)}
 .tok.voa .face:after{content:'🪽';position:absolute;right:-12px;top:-6px;font-size:16px}
 .tok.voa.act .in{animation:bobv 1.4s ease-in-out infinite}@keyframes bobv{0%,100%{transform:translateY(-14px)}50%{transform:translateY(-19px)}}
+.tok .arma{position:absolute;right:-17px;top:-20px;display:flex;gap:0;filter:drop-shadow(0 0 4px #ffe27a) drop-shadow(0 2px 2px #0008);animation:aeBob 1.8s ease-in-out infinite;transition:opacity .2s;z-index:3}
+.tok .arma svg{transform:rotate(28deg)}.tok .arma svg+svg{transform:rotate(-12deg);margin-left:-6px;margin-top:4px}
+.tok .arma.usada{filter:grayscale(.7) brightness(.8);opacity:.75}
+@keyframes aeBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.leg{display:grid;gap:3px;font-size:11.5px;color:var(--ink);margin:2px 0}
+.leg span{display:flex;align-items:center;gap:6px}.leg b{color:var(--gold)}
+.leg i{display:inline-block;width:16px;height:12px;border-radius:3px;flex:none}
+.lg-alc{background:#ffffff14;border:2px dashed #fff}.lg-area{border:2px solid}
+.mini{display:inline-block;width:20px;height:20px;border-radius:50%;background-size:cover;background-position:center;vertical-align:middle;border:1.5px solid var(--ink)}
 .tok .ci{position:absolute;left:-4px;top:-8px;display:flex;gap:1px}
 .tok .ci span{font-size:11px;line-height:1;width:17px;height:17px;border-radius:50%;background:var(--edge);border:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center}
 .tok.hit .face{animation:hitf .35s}
@@ -232,8 +241,10 @@ h1,h2,h3{font-family:Cinzel,Georgia,serif;margin:0;letter-spacing:.04em;text-wra
   #top h1{font-size:18px}
 }
 </style>
+<link rel="stylesheet" href="css/run.css">
 </head>
 <body>
+
 
 <div id="top">
   <h1>Arena de Arton</h1>
@@ -313,5 +324,7 @@ h1,h2,h3{font-family:Cinzel,Georgia,serif;margin:0;letter-spacing:.04em;text-wra
 <script src="js/ai.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/run.js"></script>
+<script src="js/run-ui.js"></script>
 </body>
 </html>

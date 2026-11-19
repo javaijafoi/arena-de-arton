@@ -4,16 +4,7 @@
   const D = window.T20DATA, R = window.T20, IA = window.T20IA, SOM = window.SOM;
   const S = 52, COLS = 16, ROWS = 12, W = COLS * S, H = ROWS * S;
   const $ = id => document.getElementById(id);
-  /* Retratos: este repositório NÃO contém arte. Os retratos (da Jambô, homenagem de fã) vêm de ARENA_CONFIG.tokensBase;
-     se não carregarem, cada personagem usa um emblema gerado. */
-  const BASE = (window.ARENA_CONFIG && window.ARENA_CONFIG.tokensBase) || '';
-  const emblema = n => {
-    let h = 0; for (const c of n) h = (h * 31 + c.charCodeAt(0)) % 360;
-    const ini = n.split('-').filter(w => w.length > 2 || n.split('-').length < 3).slice(0, 2).map(w => w[0].toUpperCase()).join('');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="g" cx="50%" cy="35%"><stop offset="0" stop-color="hsl(${h},55%,48%)"/><stop offset="1" stop-color="hsl(${(h + 30) % 360},60%,20%)"/></radialGradient></defs><rect width="100" height="100" fill="url(#g)"/><path d="M50 14 78 26v22c0 18-12 31-28 38C34 79 22 66 22 48V26z" fill="none" stroke="#f5c542" stroke-width="3" opacity=".55"/><text x="50" y="62" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="34" fill="#f4f1ea">${ini}</text></svg>`;
-    return `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, '%27')}')`;
-  };
-  const TOK = n => (BASE ? `url('${BASE}${n}.jpg'),` : '') + emblema(n);
+  const TOK = window.ARENA_TOK;
   const ICON_COND = { atordoado: '💫', ofuscado: '🌟', abalado: '😨', apavorado: '😱', fatigado: '😓', exausto: '🥵', vulneravel: '🎯', fraco: '🥀', enredado: '🕸', imovel: '⛓', lento: '🐌', caido: '⤵', inconsciente: '💤', emChamas: '🔥', acido: '🧪', paralisado: '🧊', sangrando: '🩸', fintado: '🃏', desafiado: '⚔', cego: '🕶', agarrado: '🤼' };
   const ICON_BUFF = { furia: '😡', bencao: '✨', oracao: '🙏', inspiracao: '🎵', defMagia: '🛡', escudoFe: '🛡', armaEspiritual: '🗡', velocidade: '⚡', marca: '🎯', perdicao: '☠', baluarte: '🛡', desafio: '⚔', agarrando: '🤼' };
   const NOME_BUFF = { furia: 'Fúria', bencao: 'Bênção', oracao: 'Oração', inspiracao: 'Inspirado', defMagia: 'Armadura Arcana', escudoFe: 'Escudo da Fé', armaEspiritual: 'Arma Espiritual', velocidade: 'Velocidade', marca: 'Marca da Presa', perdicao: 'Perdição', baluarte: 'Baluarte', desafio: 'Desafiando', agarrando: 'Agarrando' };
@@ -69,7 +60,7 @@
   $('tSom').onclick = () => { SOM.S.som = !SOM.S.som; togs(); SOM.tocar('clique'); };
   $('tMus').onclick = () => { SOM.S.som = true; SOM.musica(!SOM.S.musica); togs(); };
 
-  function voltarMenu() { G.st = null; $('game').classList.add('hidden'); $('menu').classList.remove('hidden'); $('tMenu').classList.add('hidden'); $('over').classList.add('hidden'); $('topSub').textContent = 'Simulador tático de Tormenta 20'; montarMenu(); }
+  function voltarMenu() { if (G.modo === 'run' && window.RUNUI) { G.st = null; $('game').classList.add('hidden'); $('tMenu').classList.add('hidden'); $('over').classList.add('hidden'); return window.RUNUI.voltarDaBatalha(); } G.st = null; $('game').classList.add('hidden'); $('menu').classList.remove('hidden'); $('tMenu').classList.add('hidden'); $('over').classList.add('hidden'); $('topSub').textContent = 'Simulador tático de Tormenta 20'; montarMenu(); }
 
   /* =============== INÍCIO DE BATALHA =============== */
   function iniciar(modo, idx, nivel) {
@@ -82,7 +73,44 @@
     $('topSub').textContent = `${E.nome} · nível ${G.nivel}${modo === 'livre' ? ' · batalha livre' : ''}`;
     desenharMapa(G.st.mapa); criarTokens(); ajustar();
     atualizar();
-    (async () => { G.busy = true; await banner(E.nome); await tocar(G.st.eventosIniciais || []); G.busy = false; atualizar(); seguir(); })();
+    G.prep = G.ia.h ? null : { sel: null };
+    if (!G.prep) R.comecar(G.st);
+    (async () => { G.busy = true; await banner(E.nome); if (G.prep) { G.busy = false; atualizar(); flutuarTopo('Posicione seus heróis'); return; } await tocar(G.st.eventosIniciais || []); G.busy = false; atualizar(); seguir(); })();
+  }
+  // batalha iniciada pelo modo roguelike (run-ui.js): heróis e inimigos vêm da run
+  function iniciarRun(o) {
+    SOM.init(); G.modo = 'run'; G.runCtx = o; G.encontro = { nome: o.nome }; G.nivel = o.cfg.nivel; G.grupo = o.cfg.herois.slice();
+    G.st = R.novaBatalha(o.cfg); if (o.ajustar) o.ajustar(G.st);
+    G.sel = null; G.mods = {}; G.logN = 0; G.undo = null; G.stats = {}; G.inspect = null; $('logIn').innerHTML = '';
+    $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('tMenu').classList.remove('hidden'); $('over').classList.add('hidden');
+    $('topSub').textContent = `${o.nome} · nível ${G.nivel} · run`;
+    desenharMapa(G.st.mapa); criarTokens(); ajustar(); atualizar();
+    G.prep = G.ia.h ? null : { sel: null }; if (!G.prep) R.comecar(G.st);
+    (async () => { G.busy = true; await banner(o.nome); if (G.prep) { G.busy = false; atualizar(); flutuarTopo('Posicione seus heróis'); return; } await tocar(G.st.eventosIniciais || []); G.busy = false; atualizar(); seguir(); })();
+  }
+  function flutuarTopo(txt) { const h = R.unidadeEm(G.st, R.zonaHerois(G.st)[0].x, R.zonaHerois(G.st)[0].y) || G.st.unidades.find(u => u.lado === 'h'); if (h) flutuar(h, txt, 'txt'); }
+  async function comecarBatalha() {
+    if (!G.prep || G.busy) return; SOM.tocar('rodada'); R.comecar(G.st); G.prep = null; G.sel = null; G.inspect = null; desenharDestaques();
+    G.busy = true; atualizar(); await banner('Lutem!', 600); await tocar(G.st.eventosIniciais || []); G.busy = false; G.ops = null; atualizar(); seguir();
+  }
+  function painelPreparo() {
+    const st = G.st, el = $('acts'); const sel = G.prep.sel && R.porId(st, G.prep.sel);
+    let h = `<h3>Posicionamento</h3><div class="desc">Antes da luta, arrume o grupo na <b style="color:#ffd65a">zona dourada</b> do seu canto: clique num herói e depois numa casa da zona. Clicar em outro herói troca os dois de lugar.</div>`;
+    h += `<button class="btn gold" id="bComecar" style="width:100%;margin:4px 0">⚔ Começar batalha</button>`;
+    for (const u of st.unidades.filter(o => o.lado === 'h')) h += `<button class="abtn${sel === u ? ' on' : ''}" data-pp="${u.id}"><span class="ic"><span class="mini" style="background-image:${TOK(u.token)}"></span></span>${u.nome.split(' ')[0]}<span class="c">${D.CLASSES[u.classe] ? D.CLASSES[u.classe].nome || u.classe : u.classe}</span></button>`;
+    h += `<div class="hint">${sel ? '👉 Agora clique numa casa dourada para ' + sel.nome.split(' ')[0] + '.' : 'Dica: guerreiros na frente, magos e arqueiros atrás.'}</div>`;
+    el.innerHTML = h;
+    el.querySelectorAll('[data-pp]').forEach(x => x.onclick = () => { SOM.tocar('clique'); G.prep.sel = G.prep.sel === x.dataset.pp ? null : x.dataset.pp; if (G.prep.sel) { G.inspect = G.prep.sel; atualizarCartao(); } painelPreparo(); desenharDestaques(); });
+    $('bComecar').onclick = () => comecarBatalha();
+  }
+  function cliquePreparo(c) {
+    const st = G.st; const o = R.unidadeEm(st, c.x, c.y); const sel = G.prep.sel;
+    if (!sel) { if (o && o.lado === 'h') { G.prep.sel = o.id; G.inspect = o.id; atualizarCartao(); SOM.tocar('clique'); } else if (o) { G.inspect = o.id; atualizarCartao(); } painelPreparo(); desenharDestaques(); return; }
+    if (o && o.id === sel) { G.prep.sel = null; painelPreparo(); desenharDestaques(); return; }
+    const err = R.reposicionar(st, sel, c.x, c.y);
+    if (err) { if (o && o.lado === 'h') { G.prep.sel = o.id; SOM.tocar('clique'); painelPreparo(); desenharDestaques(); return; } flutuar(R.porId(st, sel), err, 'txt'); SOM.tocar('erro'); return; }
+    SOM.tocar('passo'); for (const u of st.unidades.filter(q => q.lado === 'h')) { const d = G.toks[u.id]; d.style.transition = 'left .2s, top .2s'; d.style.left = u.x * S + 'px'; d.style.top = u.y * S + 'px'; setTimeout(() => { d.style.transition = ''; }, 220); }
+    G.prep.sel = null; painelPreparo(); desenharDestaques(); atualizarCartao();
   }
 
   /* =============== MAPA =============== */
@@ -155,7 +183,12 @@
     const ic = []; for (const k in u.cond) if (ICON_COND[k] && k !== 'caido' || (k === 'caido' && !R.tem(u, 'inconsciente'))) ic.push(`<span title="${R.NOME_COND[k] || k}">${ICON_COND[k] || '•'}</span>`);
     for (const k of ['furia', 'velocidade', 'marca', 'baluarte']) if (u.buff[k]) ic.push(`<span>${ICON_BUFF[k]}</span>`);
     d.querySelector('.ci').innerHTML = ic.slice(0, 4).join('');
+    const ae = u.vivo && u.buff.armaEspiritual; let ar = d.querySelector('.arma');
+    if (ae && !ar) { ar = document.createElement('div'); ar.className = 'arma'; ar.innerHTML = ESPADA + (ae.duas ? ESPADA : ''); d.appendChild(ar); }
+    if (!ae && ar) ar.remove();
+    if (ar) ar.classList.toggle('usada', ae.bloq || (ae.r === G.st.rodada && ae.n >= (ae.duas ? 2 : 1)));
   }
+  const ESPADA = '<svg viewBox="0 0 20 44" width="18" height="40"><defs><linearGradient id="ae-g" x1="0" x2="1"><stop offset="0" stop-color="#fff8d0"/><stop offset=".5" stop-color="#ffe27a"/><stop offset="1" stop-color="#d9a520"/></linearGradient></defs><path d="M10 1 L13.5 7 L13.5 29 L6.5 29 L6.5 7 Z" fill="url(#ae-g)" stroke="#8a5a00" stroke-width=".8"/><path d="M10 3 L10 28" stroke="#fffbe8" stroke-width=".9"/><rect x="2" y="29" width="16" height="3.2" rx="1.4" fill="#f5c542" stroke="#8a5a00" stroke-width=".8"/><rect x="8.3" y="32" width="3.4" height="7.5" fill="#b07a3e" stroke="#5a3a10" stroke-width=".6"/><circle cx="10" cy="41" r="2.4" fill="#f5c542" stroke="#8a5a00" stroke-width=".7"/></svg>';
   const centro = u => ({ x: u.x * S + 26, y: u.y * S + 26 });
 
   /* =============== EFEITOS (partículas) =============== */
@@ -321,7 +354,13 @@
   async function animarFx(e) {
     const a = e.de ? R.porId(G.st, e.de) : null, b = e.para ? R.porId(G.st, e.para) : null;
     if (e.fx === 'seta') { await projetil(centro(a), centro(b), e.cor || '#b98cff', 240, { r: 5, arco: (Math.random() - .5) * 60 }); explosao(centro(b).x, centro(b).y, e.cor || '#b98cff', 10, 2.5); return; }
-    if (e.fx === 'armaEspiritual') { await projetil(centro(a), centro(b), '#ffe27a', 200, { r: 5 }); return; }
+    if (e.fx === 'armaEspiritual') {
+      const ar = G.toks[a.id] && G.toks[a.id].querySelector('.arma'); if (ar) ar.style.opacity = 0;
+      SOM.tocar('swing'); const c0 = centro(a); c0.x += 26; c0.y -= 10;
+      await projetil(c0, centro(b), '#ffe27a', 230, { r: 6, arco: -40 });
+      const c = centro(b); SOM.tocar('acerto'); addFX({ tipo: 'anel', x: c.x, y: c.y, r0: 8, r1: 34, vida: 18, cor: '#ffe27a', lw: 5 }); explosao(c.x, c.y, '#fff3b0', 16, 3.5); tremer();
+      if (ar) setTimeout(() => { ar.style.opacity = ''; }, 250); await sleep(120); return;
+    }
     if (e.fx === 'furia') { SOM.tocar('furia'); const c = centro(a); addFX({ tipo: 'anel', x: c.x, y: c.y, r0: 6, r1: 56, vida: 30, cor: '#ff3b2f', lw: 8 }); explosao(c.x, c.y, '#ff6a2f', 40, 4, -.02); tremer(); await sleep(300); return; }
     if (e.fx === 'baluarte') { SOM.tocar('buff'); const c = centro(a); addFX({ tipo: 'anel', x: c.x, y: c.y, r0: 44, r1: 30, vida: 34, cor: '#9fd0ff', lw: 9 }); addFX({ tipo: 'anel', x: c.x, y: c.y, r0: 20, r1: 40, vida: 30, cor: '#ffffff', lw: 3 }); await sleep(250); return; }
     if (e.fx === 'cura') { const c = centro(b); brilhoSubindo(c.x, c.y, '#fff3a0', 14); return; }
@@ -388,7 +427,7 @@
     return `<div class="stepper" id="${id}"><span>${rot}</span><button class="m">–</button><b>${val}</b><button class="p">+</button></div>`;
   }
   function atualizarAcoes() {
-    const st = G.st, el = $('acts'); const u = R.atual(st);
+    const st = G.st, el = $('acts'); if (G.prep) return painelPreparo(); const u = R.atual(st);
     if (!u || st.fim) { el.innerHTML = '<h3>Batalha encerrada</h3>'; return; }
     const ac = u.acoes;
     const pips = `<span class="pips"><span class="pip ${ac.padrao ? 'ok' : ''}">PADRÃO</span><span class="pip ${ac.movimento ? 'ok' : ''}">MOV.</span>${u.buff.velocidade ? `<span class="pip ${ac.extra ? 'ok' : ''}">EXTRA</span>` : ''}</span>`;
@@ -441,8 +480,13 @@
         h += '</div>';
       }
     }
+    if (u.buff.armaEspiritual && u.buff.armaEspiritual.ataque) h += b('arma', '🗡', 'Arma Espiritual golpeia', ops.armaEspiritual.length > 0, ops.armaEspiritual.length ? 'livre · 2d6 automático' : 'já agiu nesta rodada', sel.modo === 'arma');
     if (ops.escapar) h += b('escapar', '🔓', 'Escapar do agarrão', true, 'padrão');
     if (ops.soltar) h += b('soltar', '✋', 'Soltar quem está agarrando', true, 'livre');
+    for (const it of ops.itens || []) {
+      const ic = { pocao: '🧪', pocaoMaior: '🧪', oleo: '🫙', protecao: '✨', velocidade: '⚡', granada: '💣' }[it.id] || '🎒';
+      h += b('i:' + it.k, ic, it.nome, it.pode, (it.acao === 'padrao' ? 'padrão' : 'mov.') + ' · cinto', sel.modo === 'item' && sel.slot === it.k);
+    }
     if (ops.levantar) h += b('levantar', '⬆', 'Levantar-se', true, 'mov.');
     if (ops.apagar) h += b('apagar', '🧯', 'Apagar as chamas', true, 'padrão');
     if (G.undo && G.undo.turnoId === st.turnoId) h += b('desfazer', '↩', 'Desfazer movimento', true, 'Z');
@@ -458,7 +502,9 @@
   function dica(u, ops) {
     const s = G.sel || {};
     if (s.modo === 'magia') { const M = D.MAGIAS[s.magia]; if (M.forma === 'alvo' && !(s.magia === 'toqueChocante' && s.aprim.area)) return '👉 Clique num alvo destacado.'; if (['esfera', 'cubo'].includes(M.forma)) return '👉 Escolha o ponto central da área no mapa.'; if (['cone', 'linha'].includes(M.forma)) return '👉 Aponte a direção no mapa e clique.'; return ''; }
+    if (s.modo === 'item') { const it = (ops.itens || []).find(x => x.k === s.slot); return it && it.id === 'granada' ? '👉 Clique num inimigo a até 30 m: explode nele e em quem estiver ao lado (inclusive aliados).' : '👉 Clique em você ou num aliado adjacente (funciona em desmaiados).'; }
     if (s.modo === 'manobra') return '👉 Clique num inimigo adjacente.';
+    if (s.modo === 'arma') return '👉 Clique num inimigo a até 9 m: a arma acerta sozinha (2d6). Depois ela não contra-ataca até seu próximo turno.';
     if (s.modo === 'manobraLista') return 'Escolha a manobra.';
     if (s.modo === 'investida') return '👉 Clique no inimigo para a investida (+2 no ataque, –2 na Defesa até seu próximo turno).';
     if (s.modo === 'hab') { if (s.hab === 'curaMaos') return '👉 Clique em você ou num aliado adjacente.'; if (['marcaPresa', 'fintar', 'desafio'].includes(s.hab)) return '👉 Clique num inimigo.'; if (s.hab === 'sopro') return '👉 Aponte a direção do sopro.'; return ''; }
@@ -467,7 +513,7 @@
     return p.length ? 'Clique no mapa: ' + p.join(', ') + '. Esc cancela.' : 'Sem ações úteis: encerre o turno.';
   }
   function painelMagia(u, mid) {
-    const M = D.MAGIAS[mid]; const s = G.sel; let h = `<div class="sub" style="background:#0e1838"><div class="desc">${M.desc}</div>`;
+    const M = D.MAGIAS[mid]; const s = G.sel; let h = `<div class="sub" style="background:#0e1838"><div class="desc">${M.desc}</div>${legendaMagia(M, mid, s.aprim)}`;
     for (const a of M.aprim || []) {
       if (a.circulo && a.circulo > u.circulo) { h += `<div class="desc" style="opacity:.55">🔒 ${a.nome} (${a.circulo}º círculo)</div>`; continue; }
       const max = a.repetivel ? 9 : 1;
@@ -497,6 +543,7 @@
     if (a === 'manobras') { G.sel = G.sel && (G.sel.modo === 'manobraLista' || G.sel.modo === 'manobra') ? null : { modo: 'manobraLista' }; atualizarAcoes(); desenharDestaques(); return; }
     if (a === 'levantar') return agir({ tipo: 'levantar' });
     if (a === 'apagar') return agir({ tipo: 'apagar' });
+    if (a.startsWith('i:')) { const k = +a.slice(2); const it = (G.ops.itens || []).find(x => x.k === k); if (it && it.proprio) return agir({ tipo: 'item', slot: k, alvo: u.id }); G.sel = (G.sel && G.sel.modo === 'item' && G.sel.slot === k) ? null : { modo: 'item', slot: k }; atualizarAcoes(); desenharDestaques(); previsao(); return; }
     if (a === 'magias') { G.sel = (G.sel && (G.sel.modo === 'magiasLista' || G.sel.modo === 'magia')) ? null : { modo: 'magiasLista' }; }
     else if (a.startsWith('h:')) { const hab = a.slice(2); G.sel = (G.sel && G.sel.hab === hab) ? null : { modo: 'hab', hab, extra: 0 }; }
     else { G.sel = (G.sel && G.sel.modo === a) ? null : { modo: a }; }
@@ -515,6 +562,14 @@
     // teia
     for (const c of st.teia) { hlc.strokeStyle = '#f4f1eacc'; hlc.lineWidth = 1.2; const X = c.x * S + 26, Y = c.y * S + 26; for (let k = 0; k < 6; k++) { hlc.beginPath(); hlc.moveTo(X, Y); hlc.lineTo(X + Math.cos(k * 1.047) * 25, Y + Math.sin(k * 1.047) * 25); hlc.stroke(); } for (const r of [8, 15, 22]) { hlc.beginPath(); for (let k = 0; k <= 6; k++) { const px = X + Math.cos(k * 1.047) * r, py = Y + Math.sin(k * 1.047) * r; k ? hlc.lineTo(px, py) : hlc.moveTo(px, py); } hlc.stroke(); } }
     for (const id in G.toks) G.toks[id].classList.remove('tgt');
+    if (G.prep) {
+      const zona = R.zonaHerois(st); const sel = G.prep.sel && R.porId(st, G.prep.sel);
+      for (const c of zona) celula(c.x, c.y, sel ? 'rgba(255,214,90,.42)' : 'rgba(255,214,90,.26)', 'rgba(255,230,150,.85)');
+      contorno(zona, '#ffd65a', []);
+      if (sel) { G.toks[sel.id].classList.add('tgt'); }
+      if (G.hover && sel && zona.some(c => c.x === G.hover.x && c.y === G.hover.y)) colchete(G.hover.x, G.hover.y, '#ffe27a');
+      return;
+    }
     const u = R.atual(st); if (!u || st.fim || ehIA(u) || G.busy) return;
     const ops = G.ops || R.opcoes(st); const s = G.sel || {}; const hv = G.hover;
     const marcar = ids => ids.forEach(id => { const o = R.porId(st, id); celula(o.x, o.y, o.lado === u.lado ? 'rgba(90,255,150,.38)' : 'rgba(255,80,85,.42)', o.lado === u.lado ? 'rgba(200,255,220,.9)' : 'rgba(255,190,190,.9)'); G.toks[id].classList.add('tgt'); });
@@ -523,22 +578,29 @@
       const alvos = s.modo === 'atacar' ? ops.atacar : s.modo === 'distancia' ? ops.distancia : [...new Set([...ops.atacar, ...ops.distancia])];
       marcar(alvos);
       if (!s.modo && hv && ops.mover && ops.mover.some(c => c.x === hv.x && c.y === hv.y)) setaCaminho(R.alcancaveis(st, u, R.deslocAtual(u)).caminho(hv.x, hv.y));
+    } else if (s.modo === 'item') { const it = (ops.itens || []).find(x => x.k === s.slot); if (it) marcar(it.alvos);
     } else if (s.modo === 'manobra') { marcar(ops.manobras || []);
+    } else if (s.modo === 'arma') { const cel = []; for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (R.dist(u, { x, y }) <= 6 && R.visao(st, u, { x, y }).ve) cel.push({ x, y }); for (const c of cel) celula(c.x, c.y, 'rgba(255,255,255,.07)'); contorno(cel, 'rgba(255,255,255,.85)', [7, 5]); marcar(ops.armaEspiritual || []);
     } else if (s.modo === 'investida') {
       marcar(ops.investida);
       if (hv) { const o = R.unidadeEm(st, hv.x, hv.y); if (o && ops.investida.includes(o.id)) { const alc = R.alcancaveis(st, u, R.deslocAtual(u) * 2); const dest = alc.celulas.filter(c => R.adjacente(c, o)).sort((a, b) => a.custo - b.custo)[0]; if (dest) setaCaminho(alc.caminho(dest.x, dest.y)); } }
     } else if (s.modo === 'magia') {
       const M = D.MAGIAS[s.magia];
+      // 1) ALCANCE: até onde você pode mirar (contorno tracejado branco)
+      const alc = celulasAlcance(st, u, s.magia, s.aprim);
+      if (alc) { for (const c of alc) celula(c.x, c.y, 'rgba(255,255,255,.07)'); contorno(alc, 'rgba(255,255,255,.9)', [7, 5]); }
+      // 2) ÁREA: quem é atingido (preenchido na cor da magia)
       if (M.forma === 'alvo' && !(s.magia === 'toqueChocante' && s.aprim.area)) marcar(R.alvosValidosMagia(st, u, s.magia, s.aprim) || []);
       else if (M.forma === 'si') marcar([u.id]);
       else {
-        let cel = null;
+        let cel = null, fora = false;
         if (M.forma.startsWith('aura') || s.magia === 'toqueChocante') cel = R.areaMagia(st, u, s.magia, u, s.aprim);
         else if (['esfera', 'cubo'].includes(M.forma)) {
-          const alc = R.alcanceMagia(M); for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (R.dist(u, { x, y }) <= alc && R.visao(st, u, { x, y }).ve) celula(x, y, 'rgba(255,255,255,.08)');
-          if (hv && R.dist(u, hv) <= alc && R.visao(st, u, hv).ve) cel = R.areaMagia(st, u, s.magia, hv, s.aprim);
+          if (hv) { cel = R.areaMagia(st, u, s.magia, hv, s.aprim); fora = !(R.dist(u, hv) <= R.alcanceMagia(M) && R.visao(st, u, hv).ve); }
         } else if (hv && !(hv.x === u.x && hv.y === u.y)) cel = R.areaMagia(st, u, s.magia, hv, s.aprim);
-        if (cel) for (const c of cel) { const o = R.unidadeEm(st, c.x, c.y); celula(c.x, c.y, o ? (o.lado === u.lado && !M.aliadosApenas && M.forma !== 'auraAliados' ? 'rgba(255,220,60,.55)' : 'rgba(255,90,40,.55)') : hexA(M.cor, .32), hexA(M.cor, .8)); }
+        if (cel && fora) { for (const c of cel) celula(c.x, c.y, 'rgba(120,120,130,.30)'); contorno(cel, 'rgba(200,200,210,.6)', [3, 4]); }
+        else if (cel) { for (const c of cel) { const o = R.unidadeEm(st, c.x, c.y); celula(c.x, c.y, o ? (o.lado === u.lado && !M.aliadosApenas && M.forma !== 'auraAliados' ? 'rgba(255,220,60,.55)' : 'rgba(255,90,40,.55)') : hexA(M.cor, .32)); } contorno(cel, hexA(M.cor, 1), []); }
+        if (hv && ['esfera', 'cubo'].includes(M.forma)) { hlc.fillStyle = fora ? '#bbb' : M.cor; hlc.beginPath(); hlc.arc(hv.x * S + 26, hv.y * S + 26, 6, 0, 7); hlc.fill(); }
       }
     } else if (s.modo === 'hab') {
       if (s.hab === 'curaMaos') marcar(R.aliadosDe(st, u).filter(a => a === u || R.adjacente(u, a)).map(a => a.id));
@@ -548,6 +610,45 @@
       if (s.hab === 'sopro' && hv) { for (const c of linhaSopro(u, hv)) celula(c.x, c.y, 'rgba(157,255,58,.45)', 'rgba(220,255,180,.9)'); }
     }
     if (hv && hv.x >= 0) colchete(hv.x, hv.y, '#ffffffcc');
+  }
+  // contorno de uma região de casas (só as bordas externas)
+  function contorno(cel, cor, dash) {
+    const k = new Set(cel.map(c => c.x + ',' + c.y)); const tem = (x, y) => k.has(x + ',' + y);
+    hlc.save(); hlc.strokeStyle = cor; hlc.lineWidth = 2.5; hlc.setLineDash(dash || []); hlc.beginPath();
+    for (const c of cel) { const X = c.x * S, Y = c.y * S;
+      if (!tem(c.x, c.y - 1)) { hlc.moveTo(X, Y + 1); hlc.lineTo(X + S, Y + 1); }
+      if (!tem(c.x, c.y + 1)) { hlc.moveTo(X, Y + S - 1); hlc.lineTo(X + S, Y + S - 1); }
+      if (!tem(c.x - 1, c.y)) { hlc.moveTo(X + 1, Y); hlc.lineTo(X + 1, Y + S); }
+      if (!tem(c.x + 1, c.y)) { hlc.moveTo(X + S - 1, Y); hlc.lineTo(X + S - 1, Y + S); } }
+    hlc.stroke(); hlc.restore();
+  }
+  // casas que a magia alcança (onde se pode mirar). null = não se aplica (pessoal, aura)
+  function celulasAlcance(st, u, mid, aprim) {
+    const M = D.MAGIAS[mid]; if (M.forma === 'si' || M.forma.startsWith('aura') || (mid === 'toqueChocante' && aprim.area)) return null;
+    let r = R.alcanceMagia(M); if (mid === 'curarFerimentos' && aprim.curto) r = 6;
+    const cel = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      if (x === u.x && y === u.y && M.forma !== 'alvo') continue;
+      if (['cone', 'linha'].includes(M.forma)) { if (R.distEuc(u, { x, y }) <= M.tamanho + 0.5 && R.terreno(st, x, y) !== 'W' && R.visao(st, u, { x, y }).ve) cel.push({ x, y }); continue; }
+      if (R.dist(u, { x, y }) > r) continue; if (r > 1 && !R.visao(st, u, { x, y }).ve) continue; if (R.terreno(st, x, y) === 'W') continue;
+      cel.push({ x, y });
+    }
+    return cel;
+  }
+  // texto: alcance x área
+  function legendaMagia(M, mid, aprim) {
+    const m = q => (q * 1.5).toString().replace('.', ',') + ' m';
+    const nomeAlc = { 0: 'pessoal', 1: 'toque', 6: 'curto', 20: 'médio', 40: 'longo' };
+    let r = R.alcanceMagia(M); if (mid === 'curarFerimentos' && aprim.curto) r = 6;
+    let alc, area;
+    if (M.forma === 'si') { alc = 'pessoal'; area = 'só você'; }
+    else if (M.forma.startsWith('aura')) { alc = 'pessoal'; area = `todos a até ${m(6)} de você` + (M.forma === 'auraAliados' ? ' (aliados)' : M.forma === 'auraInimigos' ? ' (inimigos)' : ''); }
+    else if (M.forma === 'alvo') { alc = `${nomeAlc[r] || ''} (${r <= 1 ? 'adjacente' : m(r)})`; area = mid === 'setaInfalivel' ? `${aprim.cinco ? 5 : aprim.tres ? 3 : 2} setas, divida entre os alvos` : mid === 'toqueChocante' && aprim.area ? `todos a até ${m(4)} de você` : '1 alvo'; }
+    else if (M.forma === 'esfera') { alc = `${nomeAlc[r] || ''} (${m(r)}) até o centro`; area = `esfera de ${m(M.tamanho)} de raio`; }
+    else if (M.forma === 'cubo') { alc = `${nomeAlc[r] || ''} (${m(r)}) até o centro`; area = `cubo de ${m(M.tamanho)} de lado`; }
+    else if (M.forma === 'cone') { alc = 'sai de você'; area = `cone de ${m(M.tamanho)}`; }
+    else if (M.forma === 'linha') { alc = 'sai de você'; area = `linha de ${m(M.tamanho)}`; }
+    return `<div class="leg"><span><i class="lg-alc"></i><b>Alcance</b> ${alc}</span><span><i class="lg-area" style="background:${hexA(M.cor, .5)};border-color:${M.cor}"></i><b>Área</b> ${area}</span></div>`;
   }
   function linhaSopro(u, p) { const dx = p.x - u.x, dy = p.y - u.y, L = Math.hypot(dx, dy) || 1; const out = []; for (const c of R.linhaCelulas(u.x, u.y, Math.round(u.x + dx / L * 10), Math.round(u.y + dy / L * 10)).slice(1)) { const t = R.terreno(G.st, c.x, c.y); if (t === null || t === 'W') break; out.push(c); } return out; }
   function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
@@ -599,10 +700,13 @@
   $('board').addEventListener('contextmenu', e => { e.preventDefault(); cancelar(); });
   $('board').addEventListener('click', e => {
     SOM.init(); if (!G.st || G.busy || G.st.fim) return; const c = celulaDoEvento(e); if (!c) return;
+    if (G.prep) return cliquePreparo(c);
     const st = G.st, u = R.atual(st); const o = R.unidadeEm(st, c.x, c.y);
     if (ehIA(u)) { if (o) { G.inspect = o.id; atualizarCartao(); } return; }
-    if (G.hover === null || G.hover.x !== c.x || G.hover.y !== c.y) { G.hover = c; }
+    const novoHover = !G.hover || G.hover.x !== c.x || G.hover.y !== c.y; if (novoHover) G.hover = c;
     const ops = G.ops; const s = G.sel || {};
+    // toque (celular): o 1º toque numa área só mostra a prévia; o 2º confirma
+    if (novoHover && ((s.modo === 'magia' && ['esfera', 'cubo', 'cone', 'linha'].includes(D.MAGIAS[s.magia].forma)) || (s.modo === 'hab' && s.hab === 'sopro'))) { desenharDestaques(); previsao(); return; }
     if (!s.modo || s.modo === 'atacar' || s.modo === 'distancia') {
       if (o && o.lado !== u.lado && (s.modo !== 'distancia') && ops.atacar.includes(o.id)) return agir({ tipo: 'atacar', alvo: o.id, mods: u.lado === 'h' ? { ...G.mods } : {} });
       if (o && o.lado !== u.lado && ops.distancia.includes(o.id)) return agir({ tipo: 'distancia', alvo: o.id, mods: u.lado === 'h' ? { ...G.mods } : {} });
@@ -610,6 +714,8 @@
       if (o) { G.inspect = o.id; atualizarCartao(); }
       return;
     }
+    if (s.modo === 'item') { const it = (ops.itens || []).find(x => x.k === s.slot); if (o && it && it.alvos.includes(o.id)) return agir({ tipo: 'item', slot: s.slot, alvo: o.id }); return; }
+    if (s.modo === 'arma') { if (o && (ops.armaEspiritual || []).includes(o.id)) return agir({ tipo: 'armaEspiritual', alvo: o.id }); return; }
     if (s.modo === 'manobra') { if (o && (ops.manobras || []).includes(o.id)) return agir({ tipo: 'manobra', manobra: s.manobra, alvo: o.id }); return; }
     if (s.modo === 'investida') { if (o && ops.investida.includes(o.id)) return agir({ tipo: 'investida', alvo: o.id }); return; }
     if (s.modo === 'magia') {
@@ -636,12 +742,12 @@
     if (!G.st || $('game').classList.contains('hidden')) return;
     if (e.key === 'Escape') cancelar();
     if ((e.key === 'z' || e.key === 'Z') && !G.busy) desfazer();
-    if ((e.key === 'e' || e.key === 'E') && !G.busy && !ehIA(R.atual(G.st))) agir({ tipo: 'fim' });
+    if ((e.key === 'e' || e.key === 'E') && !G.busy && !G.prep && !ehIA(R.atual(G.st))) agir({ tipo: 'fim' });
   });
 
   /* ---------- execução e fluxo ---------- */
   async function agir(acao) {
-    if (G.busy || !G.st || G.st.fim) return;
+    if (G.busy || !G.st || G.st.fim || G.prep) return;
     const st = G.st; const u = R.atual(st);
     const antes = acao.tipo === 'mover' ? JSON.parse(JSON.stringify(st)) : null;
     const r = R.executar(st, acao);
@@ -660,7 +766,7 @@
   }
   let seguindo = false;
   async function seguir() {
-    if (seguindo || !G.st) return; seguindo = true;
+    if (seguindo || !G.st || G.prep) return; seguindo = true;
     try {
       let guard = 0;
       while (G.st && !G.st.fim && ehIA(R.atual(G.st)) && guard < 400) {
@@ -703,6 +809,7 @@
   }
   function fimDeBatalha() {
     const st = G.st; const venceu = st.fim === 'herois'; SOM.tocar(venceu ? 'vitoria' : 'derrota');
+    if (G.modo === 'run' && G.runCtx) { const ctx = G.runCtx; G.runCtx = null; if (venceu) { const c = { x: W / 2, y: H / 2 }; for (let k = 0; k < 3; k++) setTimeout(() => explosao(c.x + (Math.random() - .5) * 500, c.y + (Math.random() - .5) * 300, ['#f5c542', '#5b9bff', '#8dffa4'][k], 50, 6, .08), k * 250); } return ctx.aoFim(st, G.stats); }
     const herois = st.unidades.filter(u => u.lado === 'h');
     const faces = herois.map((u, i) => `<div class="${u.vivo ? '' : 'x'}" style="background-image:${TOK(u.token)};animation-delay:${i * .1}s" title="${u.nome}"></div>`).join('');
     let html = `<h2>${venceu ? 'Vitória!' : 'Derrota…'}</h2><div class="faces">${faces}</div>`;
@@ -733,6 +840,6 @@
   window.addEventListener('resize', () => { if (G.st) ajustar(); });
 
   togs(); montarMenu();
-  window.ARENA = { G, iniciar, agir, R, IA, atualizar, seguir };
+  window.ARENA = { G, iniciar, iniciarRun, agir, R, IA, atualizar, seguir, voltarMenu, togs };
   if (window.claude && window.claude.hot) try { window.claude.hot.snapshot = () => ({ passo: G.camp.passo }); } catch (e) { /* ok */ }
 })();
