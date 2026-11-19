@@ -129,7 +129,7 @@
     let bonus = (u.per[teste] || 0) + (u.buff.baluarte || 0); const g = bonusTeste(u); bonus += g.b;
     if (teste === 'ref' && desprevenido(u)) bonus -= 5;
     if ((teste === 'fort' || teste === 'ref') && (tem(u, 'fraco') || tem(u, 'fatigado'))) bonus -= 2;
-    const r = d(st, 20), total = r + bonus, ok = r === 20 || (r !== 1 && total >= cd);
+    const r = d(st, 20), total = r + bonus, ok = total >= cd; // T20: 1 e 20 naturais não têm efeito especial em testes de resistência
     ev.push({ t: 'resist', id: u.id, teste, r, total, cd, ok });
     return ok;
   }
