@@ -10,4 +10,4 @@
 Grade 16x12 (1,5 m por quadrado), 9 heróis, magias até o 4º círculo, escada de 10 encontros (nível 1 a 14), inimigos com IA, manobras (agarrar, empurrar, derrubar), voo, cegueira e ataque de oportunidade opcional. Motor de regras separado da interface (js/rules.js).
 
 ## Aviso
-Tormenta20 e seu universo pertencem à Jambô Editora. Este projeto não inclui ilustrações oficiais.
+Tormenta20 e seu universo pertencem à Jambô Editora. Os retratos são ilustrações da Jambô usadas como homenagem de fã e removidas a pedido; o código do jogo não contém arte.

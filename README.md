@@ -23,8 +23,9 @@ node test/mecanicas.js    # voo, cegueira, manobras
 
 ## Sobre imagens e licença
 - **Código:** MIT (veja `LICENSE`).
-- **Sem arte oficial:** as ilustrações de *Tormenta20* pertencem à Jambô Editora e são reservadas, então este repositório **não as inclui**. Os personagens usam emblemas gerados. Quem tiver o material pode colocar retratos em `tokens/<id>.jpg` apenas localmente (a pasta é ignorada pelo git).
-- **Homenagem de fã:** projeto gratuito, sem fins lucrativos, **não oficial** e não aprovado nem apoiado pela Jambô Editora. *Tormenta20*, o cenário de Arton e seus nomes pertencem à [Jambô Editora](https://jamboeditora.com.br). Regras implementadas de forma simplificada; algumas fichas são aproximações.
+- **Este repositório não contém nenhuma imagem oficial.** Os retratos dos personagens são ilustrações da **Jambô Editora** (*Tormenta20*), carregados em tempo de execução de um repositório separado ([`arton-assets`](https://github.com/javaijafoi/arton-assets)), usados apenas como **homenagem de fã, gratuita e sem fins lucrativos**. Eles **serão removidos a pedido** da Jambô ou dos autores.
+- Se a imagem não carregar (ou o repositório de imagens sair do ar), o jogo usa emblemas genéricos gerados. Para trocar a origem, edite `tokensBase` em `js/config.js` (vazio = só emblemas).
+- **Obra não oficial**, não aprovada nem apoiada pela Jambô Editora. *Tormenta20*, o cenário de Arton e seus nomes pertencem à [Jambô Editora](https://jamboeditora.com.br). Regras implementadas de forma simplificada; algumas fichas são aproximações.
 
 ## 🌴 Mais do Peter
 Veja os outros projetos no [portfólio](https://javaijafoi.vercel.app).
