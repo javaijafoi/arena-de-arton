@@ -34,23 +34,73 @@
   const barra = (titulo, dir) => `<div class="win pbar"><button class="btn sm" id="pbMenu">☰ Menu</button><h2>${titulo}</h2><div class="r">${dir || ''}</div></div>`;
   function ligarBarra() { const b = $('pbMenu'); if (b) b.onclick = () => { clique(); voltarAoMenu(); }; }
 
-  /* ---------- painel no menu principal ---------- */
-  function montarBlocoMenu() {
-    let box = $('runBox');
-    if (!box) { box = document.createElement('div'); box.id = 'runBox'; box.className = 'win box runbox'; $('menu').insertBefore(box, $('menu').children[1] || null); }
-    const m = S.meta; const prox = RUN.MARCOS.find(x => m.pontos < x.pts);
-    box.innerHTML = `<div class="rb-l"><h3>Modo Roguelike · Andar 1: Estrada e Ruínas</h3>
-      <p>Monte um grupo, atravesse o mapa do andar escolhendo o caminho e derrote o chefe. Ferimentos, poções e ouro passam de uma batalha para a outra. Se todos caírem, a run acaba, mas a pontuação fica e libera coisas novas.</p>
-      <div class="rb-stats"><span>🏅 <b>${m.pontos.toLocaleString('pt-BR')}</b> pontos</span><span>${nuvemTxt()}</span><span>🎲 ${m.runs} runs · ${m.vitorias} vitórias</span>${prox ? `<span>Próximo marco: <b>${prox.nome}</b> em ${prox.pts.toLocaleString('pt-BR')}</span>` : ''}</div></div>
-      <div class="rb-b">${S.run && !S.run.fim ? `<button class="btn gold" id="rbCont">▶ Continuar run (nível ${S.run.nivel})</button><button class="btn" id="rbNova">Nova run</button>` : `<button class="btn gold" id="rbNova">⚔ Nova run</button>`}
-      ${RUN.liberado(m, 'guilda') ? '<button class="btn" id="rbGuilda">🏛 Guilda</button>' : `<button class="btn" disabled title="Libera com ${RUN.MARCOS[0].pts} pontos">🔒 Guilda (${RUN.MARCOS[0].pts.toLocaleString('pt-BR')} pts)</button>`}</div>`;
+  /* ---------- tela inicial (título do jogo) ---------- */
+  const naInicio = () => !root.classList.contains('hidden') && root.classList.contains('inicio');
+  function grupoDaCapa() {
+    if (S.run && !S.run.fim) return S.run.herois.map(x => x.hid);
+    const g = (S.pre && S.pre.grupo) || store.get('arena.grupo', ['mari', 'hana', 'zaldrin', 'aria']);
+    return g.filter(H).slice(0, 4);
+  }
+  function telaInicio() {
+    const m = S.meta; const prox = RUN.MARCOS.find(x => m.pontos < x.pts); const andando = S.run && !S.run.fim;
+    const gu = RUN.liberado(m, 'guilda');
+    const mapa = TOK.mapa('arton-paisagem.png');
+    const herois = grupoDaCapa().map((hid, k) => { const he = H(hid); return `<div class="ti-h" style="--c:${corH(he)};--d:${k * 0.15}s">${face(he.token)}<b>${esc(he.nome.split(' ')[0])}</b><small>${esc(D.CLASSES[he.classe].nome)}</small></div>`; }).join('');
+    let h = `<div class="ti">
+      <div class="ti-cena" style="${mapa ? `background-image:url('${mapa}')` : ''}">
+        <div class="ti-logo"><small>Tormenta 20 · simulador tático</small><h1>Arena<br>de Arton</h1></div>
+        <div class="ti-grupo">${herois}</div>
+        <div class="ti-chao"></div>
+      </div>
+      <div class="win ti-menu">
+        ${andando ? `<button class="btn gold bbig" id="tiCont">▶ Continuar run <small>nível ${S.run.nivel} · andar ${S.run.andar}</small></button><button class="btn bbig" id="tiNova">⚔ Nova run</button>` : '<button class="btn gold bbig" id="tiNova">⚔ Nova run <small>Andar 1: Estrada e Ruínas</small></button>'}
+        ${gu ? '<button class="btn bbig" id="tiGuilda">🏛 Guilda</button>' : `<button class="btn bbig" disabled>🔒 Guilda <small>libera com ${RUN.MARCOS[0].pts.toLocaleString('pt-BR')} pontos</small></button>`}
+        <button class="btn bbig" id="tiTreino">🎯 Treino <small>escada antiga e batalha livre</small></button>
+        <button class="btn bbig" id="tiOpc">⚙ Opções</button>
+        <div class="ti-st"><span>🏅 <b>${m.pontos.toLocaleString('pt-BR')}</b> pontos</span><span>🎲 <b>${m.runs}</b> runs · <b>${m.vitorias}</b> vitórias</span>${prox ? `<span>Próximo: <b>${esc(prox.nome)}</b> em ${prox.pts.toLocaleString('pt-BR')}</span>` : ''}</div>
+        ${nuvemTxt()}
+      </div>
+    </div>`;
+    mostrar(h, 'inicio'); $('tMenu').classList.add('hidden'); $('topSub').textContent = 'Simulador tático de Tormenta 20';
     if ($('rbNuvem')) $('rbNuvem').onclick = () => { clique(); telaNuvem(); };
-    if ($('rbCont')) $('rbCont').onclick = () => { clique(); continuar(); };
-    $('rbNova').onclick = () => { clique(); telaPre(); };
-    if ($('rbGuilda')) $('rbGuilda').onclick = () => { clique(); telaGuilda(); };
-    // a escada antiga vira "treino"
-    const lad = $('ladder'); if (lad && lad.parentElement && !lad.parentElement.dataset.treino) { lad.parentElement.dataset.treino = 1; const h = lad.parentElement.querySelector('h3'); if (h) h.textContent = 'Treino: escada de batalhas (modo antigo)'; }
-    const bc = $('bCamp'); if (bc) bc.textContent = '⚔ Treino: escada antiga';
+    if ($('tiCont')) $('tiCont').onclick = () => { clique(); continuar(); };
+    $('tiNova').onclick = () => { clique(); telaPre(); };
+    if ($('tiGuilda')) $('tiGuilda').onclick = () => { clique(); telaGuilda(); };
+    $('tiTreino').onclick = () => { clique(); telaTreino(); };
+    $('tiOpc').onclick = () => { clique(); telaOpcoes(); };
+  }
+  // o painel antigo do menu virou a tela inicial; o nome fica para quem já chamava
+  function montarBlocoMenu() { if (naInicio()) telaInicio(); }
+
+  /* ---------- opções (os mesmos botões do topo da batalha) ---------- */
+  const OPCOES = [
+    { id: 'tIA', nome: 'Inimigos', desc: 'Quem controla os inimigos na batalha.' },
+    { id: 'tIAH', nome: 'Heróis', desc: 'Deixe a IA jogar pelos heróis para só assistir.' },
+    { id: 'tOp', nome: 'Ataque de oportunidade', desc: 'Regra opcional: sair de perto de um inimigo provoca um ataque.' },
+    { id: 'tVel', nome: 'Velocidade', desc: 'Velocidade das animações.' },
+    { id: 'tSom', nome: 'Som', desc: 'Efeitos sonoros.' },
+    { id: 'tMus', nome: 'Música', desc: 'Música de fundo.' }
+  ];
+  function telaOpcoes() {
+    const val = b => { const t = $(b).textContent.replace(/^\S+\s*/, ''); const i = t.indexOf(':'); return i >= 0 ? t.slice(i + 1).trim() : b === 'tVel' ? t : ($(b).classList.contains('on') ? 'ligado' : 'desligado'); };
+    let h = barra('Opções') + '<div class="scroll ti-opc">' + OPCOES.map(o => `<div class="op-l"><div><b>${o.nome}</b><small>${o.desc}</small></div><button class="btn${$(o.id).classList.contains('on') ? ' gold' : ''}" data-op="${o.id}">${esc(val(o.id))}</button></div>`).join('') + '</div>';
+    mostrar(h, 'opcoes'); ligarBarra();
+    ligar('[data-op]', d => { $(d.op).click(); telaOpcoes(); });
+  }
+
+  /* ---------- treino: a escada antiga e a batalha livre (#menu), no visual novo ---------- */
+  function telaTreino() { fecharRun(); A().G.modo = null; A().voltarMenu(); }
+  function vestirTreino() {
+    const mn = $('menu'); document.body.classList.add('em-run', 'px-treino');
+    if (!$('trBar')) {
+      const b = document.createElement('div'); b.id = 'trBar'; b.className = 'win pbar';
+      b.innerHTML = '<button class="btn sm" id="trVoltar">◀ Início</button><h2>Treino</h2><div class="r"></div>';
+      mn.insertBefore(b, mn.firstChild);
+      $('trVoltar').onclick = () => { clique(); document.body.classList.remove('px-treino'); mn.classList.add('hidden'); telaInicio(); };
+      const hero = mn.querySelector('.hero'); if (hero) { const h2 = hero.querySelector('h2'); if (h2) h2.textContent = 'Escada antiga'; const p = hero.querySelector('p'); if (p) p.textContent = 'Batalhas fixas do 1º ao 14º nível, sem mapa e sem morte permanente. A cada vitória o grupo sobe de nível. Bom para testar heróis e magias.'; }
+      const lad = $('ladder'); if (lad && lad.parentElement) { const h = lad.parentElement.querySelector('h3'); if (h) h.textContent = 'Escada de batalhas'; }
+      const bc = $('bCamp'); if (bc) bc.textContent = '⚔ Jogar a escada';
+    }
   }
   function nuvemTxt() {
     const N = window.NUVEM; if (!N) return '';
@@ -69,7 +119,7 @@
     $('nCopiar').onclick = () => { clique(); try { navigator.clipboard.writeText(N.codigo()); $('nCopiar').textContent = '✓ Copiado'; } catch (e) { const r = document.createRange(); r.selectNodeContents($('nCod')); getSelection().removeAllRanges(); getSelection().addRange(r); } };
     $('nUsar').onclick = async () => { clique(); try { const d = await N.usarCodigo($('nIn').value); aplicarNuvem(d); telaNuvem({ ok: true, txt: `Progresso carregado: ${(S.meta.pontos || 0).toLocaleString('pt-BR')} pontos.` }); } catch (e) { telaNuvem({ ok: false, txt: e.message }); } };
   }
-  function voltarAoMenu() { fecharRun(); A().G.modo = null; A().voltarMenu(); montarBlocoMenu(); }
+  function voltarAoMenu() { $('menu').classList.add('hidden'); document.body.classList.remove('px-treino'); A().G.modo = null; telaInicio(); }
 
   /* ---------- pré-run: montar o grupo ---------- */
   function telaPre() {
@@ -130,7 +180,7 @@
     let h = `<div class="rv-head"><button class="btn sm" id="pbMenu">☰ Menu</button><h2>${titulo}</h2><div class="party">`;
     run.herois.forEach((x, hi) => {
       const he = H(x.hid); const pvM = RUN.pvMaxDe(x, run.nivel), pmM = RUN.pmMaxDe(x, run.nivel); const pv = pvM - x.dano, pm = pmM - x.pmGasto;
-      h += `<button class="pc${x.morto ? ' dead' : ''}" data-inv="${hi}" title="${esc(he.nome)}: ver itens"><span class="f" style="background-image:${TOK(he.token)}"></span><span class="bars">${x.morto ? '<b class="dd">MORTO</b>' : `<i class="hp"><i style="width:${pv / pvM * 100}%"></i></i><small>${pv}/${pvM}</small><i class="mp"><i style="width:${pmM ? pm / pmM * 100 : 0}%"></i></i>`}</span></button>`;
+      h += `<button class="pc${x.morto ? ' dead' : ''}" data-inv="${hi}" title="${esc(he.nome)}: ver itens"><span class="f" style="background-image:${PX(he.token)}"></span><span class="bars">${x.morto ? '<b class="dd">MORTO</b>' : `<i class="hp"><i style="width:${pv / pvM * 100}%"></i></i><small>${pv}/${pvM}</small><i class="mp"><i style="width:${pmM ? pm / pmM * 100 : 0}%"></i></i>`}</span></button>`;
     });
     h += `</div></div><div class="rv-sub"><span class="chip gold">Nível ${run.nivel}</span><span class="xpbar"><i style="width:${Math.min(100, (run.xp - xp0) / (xp1 - xp0) * 100)}%"></i></span><span class="mut">XP ${run.xp.toLocaleString('pt-BR')} / ${xp1.toLocaleString('pt-BR')}</span><div class="sp"></div>
       <span class="chip" title="Ouro">💰 T$ ${run.ouro}</span><span class="chip" title="Rações">🍖 ${run.bolsa.racao}</span><span class="chip" title="Barraca">⛺ ${run.bolsa.barraca}</span><span class="chip" title="Itens na mochila">🎒 ${run.mochila.length}</span><button class="btn sm" id="hInv">Itens</button></div>`;
@@ -243,7 +293,7 @@
   function telaPreBatalha(n) {
     const run = S.run; const g = RUN.inimigosDoNo(run, n);
     let h = cabecalho(esc(n.nome)) + `<div class="win box center-box"><small class="tag">${NOME_TIPO[n.tipo]} · ND ${RUN.ndTxt(g.nd)}</small><h2>${esc(n.nome)}</h2>${n.texto ? `<p>${esc(n.texto)}</p>` : ''}
-      <div class="foes fbig">${g.ids.map(id => { const c = D.CRIATURAS[id]; return `<div class="foe-c"><span class="foe${id === g.chefe ? ' boss' : ''}" style="background-image:${TOK(c.token)}"></span><small>${esc(c.nome)}${id === g.chefe ? ' (chefe)' : ''}<br>ND ${c.ndTxt}</small></div>`; }).join('')}</div>
+      <div class="foes fbig">${g.ids.map(id => { const c = D.CRIATURAS[id]; return `<div class="foe-c"><span class="foe${id === g.chefe ? ' boss' : ''}" style="background-image:${PX(c.token)}"></span><small>${esc(c.nome)}${id === g.chefe ? ' (chefe)' : ''}<br>ND ${c.ndTxt}</small></div>`; }).join('')}</div>
       <p class="mut">Os PV, PM e itens do cinto de cada herói entram na batalha como estão. Herói desmaiado levanta com 1 PV se o grupo vencer; se sofrer dano desmaiado ou um crítico que o derrube, morre.</p>
       <div class="row" style="justify-content:center"><button class="btn sm" id="bInv">🎒 Arrumar itens antes</button><button class="btn gold bbig" id="bLutar">⚔ Lutar!</button></div></div>`;
     mostrar(h, 'prebat'); ligarCabecalho(() => telaPreBatalha(n));
@@ -266,7 +316,7 @@
   function telaResultado() {
     const run = S.run; const res = S.res || run.ultimoRes; if (!res) { run.pendente = null; return telaMapa(); }
     let h = `<div class="win box center-box ${res.venceu ? '' : 'red'}"><h2>${res.venceu ? 'Vitória!' : 'O grupo caiu…'}</h2>
-      <div class="faces">${res.herois.map(x => `<div class="${x.vivo ? '' : 'x'}" style="background-image:${TOK(x.token)}" title="${esc(x.nome)}"></div>`).join('')}</div>
+      <div class="faces">${res.herois.map(x => `<div class="${x.vivo ? '' : 'x'}" style="background-image:${PX(x.token)}" title="${esc(x.nome)}"></div>`).join('')}</div>
       <p>${esc(res.nome)} · ${res.rodadas} rodadas${res.mortos.length ? `<br><b class="redt">Mortos: ${res.mortos.map(esc).join(', ')}</b>` : ''}</p>`;
     if (res.venceu) {
       h += `<div class="loot"><span>⭐ +${res.xp} XP</span><span>💰 +T$ ${res.ouro}</span>${res.itens.map(i => `<span class="item">${I(i).ic} ${esc(I(i).nome)}</span>`).join('')}</div>`;
@@ -296,7 +346,7 @@
   function telaInventario(hi, volta) {
     const run = S.run; S.inv = { hi, volta }; const x = run.herois[hi]; const he = H(x.hid);
     const slot = (s, nome) => { const id = x.equip[s]; return `<button class="slot${id ? ' full' : ''}" data-tira="${s}" ${id ? '' : 'disabled'}><small>${nome}</small>${id ? `<b>${I(id).ic} ${esc(I(id).nome)}</b><em>${esc(I(id).desc)}</em>` : '<b class="mut">vazio</b>'}</button>`; };
-    let h = cabecalho('Itens do grupo') + `<div class="rv-grid2"><div class="win box"><div class="tabs">${run.herois.map((y, k) => `<button class="tab${k === hi ? ' on' : ''}${y.morto ? ' dead' : ''}" data-tab="${k}"><span class="f" style="background-image:url(${TOK(H(y.hid).token)})"></span>${esc(H(y.hid).nome.split(' ')[0])}</button>`).join('')}</div>
+    let h = cabecalho('Itens do grupo') + `<div class="rv-grid2"><div class="win box"><div class="tabs">${run.herois.map((y, k) => `<button class="tab${k === hi ? ' on' : ''}${y.morto ? ' dead' : ''}" data-tab="${k}"><span class="f" style="background-image:${PX(H(y.hid).token)}"></span>${esc(H(y.hid).nome.split(' ')[0])}</button>`).join('')}</div>
       <h3>${esc(he.nome)} <small>${D.CLASSES[he.classe].nome} ${run.nivel}${x.morto ? ' · morto' : ''}</small></h3>
       <div class="slots">${slot('arma', 'Arma')}${slot('armadura', 'Armadura')}${slot('acessorio', 'Acessório')}</div>
       <h3>Cinto <small>(até 3, usados na batalha)</small></h3><div class="slots c3">${x.cinto.map((id, k) => `<button class="slot${id ? ' full' : ''}" data-tira="cinto${k}" ${id ? '' : 'disabled'}><small>Cinto ${k + 1}</small>${id ? `<b>${I(id).ic} ${esc(I(id).nome)}</b>` : '<b class="mut">vazio</b>'}</button>`).join('')}</div>
@@ -314,7 +364,7 @@
   /* ---------- loja ---------- */
   function telaLoja(n) {
     const run = S.run; const est = RUN.estoqueLoja(run, n);
-    let h = cabecalho('Loja') + `<div class="rv-grid2"><div class="win box"><div class="npc"><span class="f" style="background-image:${TOK('saqueadora')}"></span><div><small class="tag">Loja</small><h3>${esc(n.nome)}</h3><p class="mut">"Poção, comida, aço bom. Pague em Tibares e não me faça perder tempo."</p></div></div>
+    let h = cabecalho('Loja') + `<div class="rv-grid2"><div class="win box"><div class="npc"><span class="f" style="background-image:${PX('saqueadora')}"></span><div><small class="tag">Loja</small><h3>${esc(n.nome)}</h3><p class="mut">"Poção, comida, aço bom. Pague em Tibares e não me faça perder tempo."</p></div></div>
       <div class="shop">${est.map((e, k) => { const it = I(e.id); const pode = !e.vendido && run.ouro >= it.preco; return `<div class="ware${e.vendido ? ' sold' : ''}"><span class="ic">${it.ic}</span><b>${esc(it.nome)}</b><em>${esc(it.desc)}</em><div class="row"><span class="pr">T$ ${it.preco}</span>${e.fixo ? '<small class="mut">sempre</small>' : ''}<button class="btn sm gold" data-compra="${k}" ${pode ? '' : 'disabled'}>${e.vendido ? 'Vendido' : 'Comprar'}</button></div></div>`; }).join('')}</div></div>
       <div class="win box"><h3>Vender</h3>${run.mochila.length ? run.mochila.map((id, k) => { const v = RUN.precoVenda(id); return `<div class="buyrow"><span class="ic">${I(id).ic}</span><span class="nm">${esc(I(id).nome)}</span><button class="btn sm" data-vende="${k}" ${v ? '' : 'disabled'}>${v ? 'T$ ' + v : 'só na guilda'}</button></div>`; }).join('') : '<p class="mut">Nada na mochila para vender. Itens equipados precisam ir para a mochila antes (botão Itens).</p>'}
       <p class="mut">Itens de cinto comprados vão para o primeiro cinto com espaço; os outros para a mochila.</p><button class="btn gold bbig" id="lSair">➜ Seguir viagem</button></div></div>`;
@@ -363,7 +413,7 @@
     if (!run.resumo) { run.resumo = RUN.encerrarRun(run, S.meta, run.desistiu); salvar(); }
     const r = run.resumo; const st = r.stats;
     let h = `<div class="win box center-box fim ${r.venceu ? '' : 'red'}"><small class="tag">Fim da run</small><h2>${r.venceu ? '🏆 Vitória! O andar 1 está limpo' : r.desistiu ? 'O grupo voltou para casa' : '💀 O grupo caiu'}</h2>
-      <div class="faces">${run.herois.map(x => `<div class="${x.morto ? 'x' : ''}" style="background-image:url(${TOK(H(x.hid).token)})" title="${esc(H(x.hid).nome)}"></div>`).join('')}</div>
+      <div class="faces">${run.herois.map(x => `<div class="${x.morto ? 'x' : ''}" style="background-image:${PX(H(x.hid).token)}" title="${esc(H(x.hid).nome)}"></div>`).join('')}</div>
       <div class="pts">+${r.pts.toLocaleString('pt-BR')} <small>pontos</small></div><p class="mut">Total: ${r.total.toLocaleString('pt-BR')} pontos (XP que cada herói ganhou${r.venceu ? ' + 2.000 pela vitória' : ''})</p>
       <div class="statg"><span><b>${r.nivel}</b>nível final</span><span><b>${st.batalhas}</b>batalhas</span><span><b>${st.abates}</b>inimigos</span><span><b>${st.mortes}</b>mortes</span><span><b>T$ ${st.ouroGanho}</b>ouro achado</span></div>`;
     if (r.venceu && r.fica.length) h += `<div class="news">🎒 <b>Ficam no baú da guilda:</b> ${r.fica.map(i => I(i).ic + ' ' + esc(I(i).nome)).join(', ')}${r.ouro ? ` · T$ ${r.ouro} guardados` : ''}</div>`;
@@ -412,10 +462,10 @@
 
   // o botão ☰ Menu fora da batalha volta ao menu principal
   $('tMenu').addEventListener('click', e => { if (!root.classList.contains('hidden')) { e.stopImmediatePropagation(); voltarAoMenu(); } }, true);
-  montarBlocoMenu();
+  telaInicio();
   if (window.NUVEM) {
-    window.NUVEM.ouvir(() => { if (!$('menu').classList.contains('hidden')) montarBlocoMenu(); });
-    window.NUVEM.puxar().then(d => { if (d) { aplicarNuvem(d); if (!$('menu').classList.contains('hidden')) montarBlocoMenu(); } else if (!store.get('arena.salvoEm', 0) && (S.meta.runs || S.run)) salvar(); });
+    window.NUVEM.ouvir(() => { montarBlocoMenu(); });
+    window.NUVEM.puxar().then(d => { if (d) { aplicarNuvem(d); montarBlocoMenu(); } else if (!store.get('arena.salvoEm', 0) && (S.meta.runs || S.run)) salvar(); });
   }
-  window.RUNUI = { S, telaMapa, telaPre, telaGuilda, continuar, voltarDaBatalha, montarBlocoMenu, salvar };
+  window.RUNUI = { S, telaInicio, vestirTreino, telaLoja, telaDescanso, telaEvento, telaFim, telaResultado, telaPreBatalha, telaInventario, telaMapa, telaPre, telaGuilda, continuar, voltarDaBatalha, montarBlocoMenu, salvar };
 })();

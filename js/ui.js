@@ -23,7 +23,7 @@
     const picks = $('picks'); picks.innerHTML = '';
     for (const h of D.HEROIS) {
       const c = D.CLASSES[h.classe]; const b = document.createElement('button'); b.className = 'pick' + (G.grupo.includes(h.id) ? ' sel' : '');
-      b.innerHTML = `<span class="n">${G.grupo.indexOf(h.id) + 1}</span><div class="face" style="background-image:${TOK(h.token)}"></div><b>${h.nome}</b><small><span style="color:var(--gold);font-weight:800">${c.nome}</span><br>${c.descricao}</small>`;
+      b.innerHTML = `<span class="n">${G.grupo.indexOf(h.id) + 1}</span><div class="face" style="background-image:${TOK.px(h.token)}"></div><b>${h.nome}</b><small><span style="color:var(--gold);font-weight:800">${c.nome}</span><br>${c.descricao}</small>`;
       b.onclick = () => { SOM.tocar('clique'); const i = G.grupo.indexOf(h.id); if (i >= 0) G.grupo.splice(i, 1); else if (G.grupo.length < 4) G.grupo.push(h.id); else { G.grupo.shift(); G.grupo.push(h.id); } store.set('arena.grupo', G.grupo); montarMenu(); };
       picks.appendChild(b);
     }
@@ -60,7 +60,7 @@
   $('tSom').onclick = () => { SOM.S.som = !SOM.S.som; togs(); SOM.tocar('clique'); };
   $('tMus').onclick = () => { SOM.S.som = true; SOM.musica(!SOM.S.musica); togs(); };
 
-  function voltarMenu() { if (G.modo === 'run' && window.RUNUI) { G.st = null; $('game').classList.add('hidden'); $('tMenu').classList.add('hidden'); $('over').classList.add('hidden'); return window.RUNUI.voltarDaBatalha(); } G.st = null; $('game').classList.add('hidden'); $('menu').classList.remove('hidden'); $('tMenu').classList.add('hidden'); $('over').classList.add('hidden'); $('topSub').textContent = 'Simulador tático de Tormenta 20'; montarMenu(); }
+  function voltarMenu() { if (G.modo === 'run' && window.RUNUI) { G.st = null; $('game').classList.add('hidden'); $('tMenu').classList.add('hidden'); $('over').classList.add('hidden'); return window.RUNUI.voltarDaBatalha(); } G.st = null; $('game').classList.add('hidden'); $('menu').classList.remove('hidden'); $('tMenu').classList.add('hidden'); $('over').classList.add('hidden'); $('topSub').textContent = 'Simulador tático de Tormenta 20'; montarMenu(); if (window.RUNUI) window.RUNUI.vestirTreino(); }
 
   /* =============== INÍCIO DE BATALHA =============== */
   function iniciar(modo, idx, nivel) {
@@ -69,7 +69,7 @@
     const E = D.ENCONTROS[idx]; G.modo = modo; G.passo = idx; G.encontro = E; G.nivel = nivel || E.nivel;
     G.st = R.novaBatalha({ herois: G.grupo.slice(0, 4), nivel: G.nivel, inimigos: E.inimigos, mapa: E.mapa, seed: (Math.random() * 1e9) | 0, oportunidade: !!G.op });
     G.sel = null; G.mods = {}; G.logN = 0; G.undo = null; G.stats = {}; G.inspect = null; $('logIn').innerHTML = '';
-    $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('tMenu').classList.remove('hidden'); $('over').classList.add('hidden');
+    $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('tMenu').classList.remove('hidden'); $('over').classList.add('hidden'); document.body.classList.remove('em-run', 'px-treino');
     $('topSub').textContent = `${E.nome} · nível ${G.nivel}${modo === 'livre' ? ' · batalha livre' : ''}`;
     desenharMapa(G.st.mapa); criarTokens(); ajustar();
     atualizar();
@@ -82,7 +82,7 @@
     SOM.init(); G.modo = 'run'; G.runCtx = o; G.encontro = { nome: o.nome }; G.nivel = o.cfg.nivel; G.grupo = o.cfg.herois.slice();
     G.st = R.novaBatalha(o.cfg); if (o.ajustar) o.ajustar(G.st);
     G.sel = null; G.mods = {}; G.logN = 0; G.undo = null; G.stats = {}; G.inspect = null; $('logIn').innerHTML = '';
-    $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('tMenu').classList.remove('hidden'); $('over').classList.add('hidden');
+    $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('tMenu').classList.remove('hidden'); $('over').classList.add('hidden'); document.body.classList.remove('em-run', 'px-treino');
     $('topSub').textContent = `${o.nome} · nível ${G.nivel} · run`;
     desenharMapa(G.st.mapa); criarTokens(); ajustar(); atualizar();
     G.prep = G.ia.h ? null : { sel: null }; if (!G.prep) R.comecar(G.st);
