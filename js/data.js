@@ -361,7 +361,7 @@
      . grama  T árvore (difícil, cobertura)  R pedra (bloqueia, cobertura)  W muro (bloqueia visão)
      ~ água (bloqueia)  = ponte  p trilha  t túmulo (bloqueia, cobertura)  s chão de pedra  */
   const MAPAS = {
-    rio: { nome: 'Vau do Rio', tema: 'campo', linhas: [
+    rio: { nome: 'Vau do Rio', tema: 'campo', zona: { x: [0, 3], y: [1, 5] }, linhas: [
       'TT....pp.....TTT',
       'T.....pp...R..TT',
       '......pp........',
@@ -374,7 +374,7 @@
       '.TT...pp........',
       'TTT...pp...WW..T',
       'TT....pp....W.TT'] },
-    estrada: { nome: 'Estrada de Valkaria', tema: 'campo', linhas: [
+    estrada: { nome: 'Estrada de Valkaria', tema: 'campo', zona: { x: [0, 3], y: [3, 7] }, linhas: [
       'TTT......T..TTTT',
       'TT.............T',
       'T....R.....T....',
@@ -387,7 +387,7 @@
       'pppppppppppppppp',
       'T.......T....T.T',
       'TTT..T......TTTT'] },
-    cripta: { nome: 'Cripta de Tauron', tema: 'cripta', linhas: [
+    cripta: { nome: 'Cripta de Tauron', tema: 'cripta', zona: { x: [1, 3], y: [3, 8] }, linhas: [
       'WWWWWWWWWWWWWWWW',
       'Wssssssssssssss W'.replace(' ', ''),
       'WsstsssWWssstssW',
@@ -400,7 +400,7 @@
       'WsstsssWWsssstsW',
       'WssssssssssssssW',
       'WWWWWWWWWWWWWWWW'] },
-    clareira: { nome: 'Clareira Sombria', tema: 'campo', linhas: [
+    clareira: { nome: 'Clareira Sombria', tema: 'campo', zona: { x: [0, 2], y: [3, 8] }, linhas: [
       'TTTTT......TTTTT',
       'TTT..........TTT',
       'TT....R.........',

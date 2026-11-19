@@ -1,0 +1,167 @@
+/* Arena de Arton — telas do roguelike. Mesmo visual da batalha: azul profundo, dourado, retratos redondos. */
+#run{max-width:1500px;margin:0 auto;display:grid;gap:14px}
+.rv h2{font-size:clamp(22px,3vw,30px);color:var(--gold);text-shadow:0 3px 0 #000}
+.rv h3{font-family:Cinzel,serif;color:var(--gold);font-size:16px;margin:0 0 10px}
+.rv h3 small{font-family:Nunito;color:var(--muted);font-size:12px;font-weight:700}
+.rv p{line-height:1.5}
+.mut{color:var(--muted);font-size:13px}
+.redt{color:var(--red)}.okt{color:var(--green)}
+.sp{flex:1}
+.tag{display:inline-block;font-family:Cinzel,serif;font-weight:900;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:14px;background:#0e1838;border:2px solid #f4f1ea44;border-radius:20px;padding:5px 12px;white-space:nowrap}
+.chip.gold{border-color:var(--gold);color:var(--gold)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn.bbig{font-size:17px;padding:11px 22px}
+.box{padding:16px}
+.col{display:grid;gap:14px;align-content:start}
+.win.box.red{--win1:#8e2733;--win2:#4e121b}
+
+/* cabeçalho */
+.rv-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rv-sub{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.party{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.pc{display:flex;align-items:center;gap:8px;background:#0e1838;border:2px solid #f4f1ea44;border-radius:30px;padding:4px 12px 4px 4px;min-width:150px}
+.pc:hover{border-color:var(--gold)}
+.pc .f,.tab .f,.npc .f,.room .f{border-radius:50%;background-size:cover;background-position:center 30%;flex:none}
+.pc .f{width:40px;height:40px;border:2px solid var(--blue)}
+.pc .bars{display:grid;gap:3px;flex:1;min-width:84px;text-align:left}
+.pc .bars small{font-size:11px;font-weight:800;line-height:1}
+.pc i.hp,.pc i.mp{display:block;height:7px;border-radius:4px;background:#000a;border:1px solid #f4f1ea55;overflow:hidden}
+.pc i.hp i{display:block;height:100%;background:linear-gradient(90deg,#2fae4c,#7cf08e)}
+.pc i.mp i{display:block;height:100%;background:linear-gradient(90deg,#3a7be0,#8fc3ff)}
+.pc.dead{border-color:var(--red)}.pc.dead .f{filter:grayscale(1);border-color:var(--red)}
+.pc .dd{color:var(--red);font-size:12px;letter-spacing:.08em}
+.xpbar{width:220px;max-width:40vw;height:12px;border-radius:7px;border:2px solid var(--ink);background:#000a;overflow:hidden}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,#d99a17,#ffd866)}
+
+/* menu: bloco do roguelike */
+.runbox{display:flex;gap:18px;align-items:center;flex-wrap:wrap;border-color:var(--gold)!important}
+.runbox .rb-l{flex:1;min-width:260px}
+.runbox h3{color:var(--gold);font-size:18px;margin:0 0 6px}
+.runbox p{margin:0 0 8px;color:var(--muted);line-height:1.5;max-width:70ch}
+.rb-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;font-weight:700}
+.rb-b{display:flex;gap:10px;flex-wrap:wrap}
+
+/* pré-run */
+.rv-grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
+.buyrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f4f1ea22}
+.buyrow .ic{font-size:22px;width:30px;text-align:center}
+.buyrow .nm{flex:1;font-weight:800;font-size:14px}
+.buyrow .nm small{display:block;font-weight:600;color:var(--muted);font-size:12px}
+.buyrow .pr{color:var(--gold);font-weight:900;white-space:nowrap}
+.buyrow .q{width:22px;text-align:center}
+.bau{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:8px}
+.itm{display:grid;gap:3px;text-align:left;background:#0e1838;border:2px solid #f4f1ea33;border-radius:8px;padding:8px 10px;font-weight:800;font-size:13px}
+.itm span{font-size:20px}
+.itm em{font-style:normal;font-weight:600;color:var(--muted);font-size:12px}
+.itm.on{border-color:var(--gold);box-shadow:0 0 12px #f5c54255}
+button.itm:hover:not([disabled]){border-color:var(--gold)}
+
+/* mapa */
+.rv-map{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.mapwrap{padding:10px;background:radial-gradient(ellipse at 40% 40%,#2f6a2e,#173d1c 75%);overflow:hidden}
+svg.mapa{display:block;width:100%;height:auto}
+svg.mapa line{stroke:#f4f1ea40;stroke-width:3;stroke-dasharray:2 9;stroke-linecap:round}
+svg.mapa line.opc{stroke:#f4f1eacc;stroke-dasharray:6 7}
+svg.mapa line.feito{stroke:var(--gold);stroke-width:6;stroke-dasharray:none}
+.no circle{stroke:#f4f1ea;stroke-width:3;fill:#21409a}
+.no text{text-anchor:middle;fill:#fff;font-weight:900;pointer-events:none}
+.no.batalha circle{fill:#2a4fae}.no.elite circle{fill:#b4323e}.no.loja circle{fill:#1d8a45}.no.descanso circle{fill:#d0661e}.no.evento circle{fill:#222842}.no.taverna circle{fill:#8a5a1d}
+.no.chefe circle{fill:#d99a17;stroke-width:4}.no.inicio circle{fill:#4a5170}
+.no.past circle,.no:not(.can):not(.cur):not(.done):not(.chefe) circle{opacity:.55}
+.no.done circle{opacity:.45}.no.done text{opacity:.6}
+.no.cur circle{stroke:var(--gold);stroke-width:5;opacity:1}
+.no.can{cursor:pointer}.no.can circle{opacity:1;stroke:#fff;animation:pulso 1.4s ease-in-out infinite}
+.no.can:hover circle{stroke:var(--gold)}
+.no.sel circle{stroke:var(--gold);stroke-width:6;animation:none}
+@keyframes pulso{0%,100%{stroke-width:3}50%{stroke-width:7}}
+.rv-side{display:grid;gap:12px;align-content:start}
+.np h3{margin-bottom:4px}
+.foes{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.foe{display:block;width:44px;height:44px;border-radius:50%;background-size:cover;background-position:center 30%;border:3px solid var(--red);box-shadow:0 0 0 2px var(--edge)}
+.foe.boss{border-color:var(--gold);width:54px;height:54px}
+.foes.fbig{justify-content:center;gap:16px;margin:16px 0}
+.foes.fbig .foe{width:74px;height:74px}.foes.fbig .foe.boss{width:92px;height:92px}
+.foe-c{display:grid;justify-items:center;gap:6px;text-align:center;max-width:110px}
+.foe-c small{font-size:12px;font-weight:700;color:var(--muted)}
+.rv-leg{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;font-weight:700;color:var(--muted)}
+.rv-leg span{display:flex;align-items:center;gap:5px}
+.lg{display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;font-size:12px;border:2px solid var(--ink);color:#fff}
+.lg.batalha{background:#2a4fae}.lg.elite{background:#b4323e}.lg.loja{background:#1d8a45}.lg.descanso{background:#d0661e}.lg.evento{background:#222842}.lg.chefe{background:#d99a17}
+
+/* telas centrais */
+.center-box{max-width:760px;width:100%;margin:0 auto;text-align:center}
+.center-box p{color:var(--muted)}
+.faces{display:flex;justify-content:center;gap:10px;margin:14px 0}
+.faces div{width:64px;height:64px;border-radius:50%;background-size:cover;background-position:center 30%;border:3px solid var(--blue)}
+.faces div.x{filter:grayscale(1);opacity:.5;border-color:var(--red)}
+.loot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0;font-weight:900;font-size:16px}
+.loot span{background:#0e1838;border:2px solid #f4f1ea44;border-radius:20px;padding:6px 14px}
+.loot .item{border-color:var(--gold);color:var(--gold)}
+.news.unlock{border:2px solid var(--gold)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* inventário */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{display:flex;align-items:center;gap:6px;background:#0e1838;border:2px solid #f4f1ea33;border-radius:20px;padding:3px 12px 3px 3px;font-weight:800;font-size:13px}
+.tab .f{width:30px;height:30px;border:2px solid var(--blue)}
+.tab.on{border-color:var(--gold);color:var(--gold)}.tab.dead .f{filter:grayscale(1)}
+.slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.slot{display:grid;gap:3px;text-align:left;align-content:start;min-height:84px;background:#0e1838;border:2px dashed #f4f1ea44;border-radius:8px;padding:8px}
+.slot small{font-family:Cinzel,serif;font-size:11px;color:var(--gold);letter-spacing:.06em}
+.slot b{font-size:13px}.slot em{font-style:normal;font-size:12px;color:var(--muted)}
+.slot.full{border-style:solid;border-color:#f4f1ea66}
+.slot.full:hover{border-color:var(--red)}
+
+/* loja */
+.npc{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+.npc .f{width:76px;height:76px;border:3px solid var(--gold);box-shadow:0 0 0 2px var(--edge)}
+.npc h3{margin:0 0 2px}.npc p{margin:0}
+.shop{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.ware{display:grid;gap:4px;align-content:start;background:#0e1838;border:2px solid #f4f1ea33;border-radius:10px;padding:10px}
+.ware .ic{font-size:26px}.ware b{font-size:14px}.ware em{font-style:normal;font-size:12px;color:var(--muted);flex:1}
+.ware .row{justify-content:space-between;margin-top:4px}
+.ware .pr{color:var(--gold);font-weight:900}
+.ware.sold{opacity:.45}
+
+/* descanso e evento */
+.rest{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:14px 0}
+.restc,.choice{display:grid;gap:4px;text-align:left;background:#0e1838;border:2px solid #f4f1ea55;border-radius:10px;padding:12px}
+.restc:hover:not([disabled]),.choice:hover:not([disabled]){border-color:var(--gold);transform:translateY(-2px)}
+.restc[disabled],.choice[disabled]{opacity:.45;cursor:not-allowed}
+.restc b,.choice b{font-size:15px}.restc span{font-size:13px;color:var(--muted)}.restc small,.choice small{font-weight:800;font-size:12px;color:var(--gold)}
+.choice .pct{color:#fff;background:#21409a;border-radius:10px;padding:0 6px}
+.choices{display:grid;gap:10px;margin-top:14px}
+.evt-ic{font-size:54px;line-height:1}
+.roll{display:inline-block;margin:10px 0;padding:8px 14px;border-radius:8px;font-weight:800;background:#0e1838;border:2px solid var(--green)}
+.roll.no{border-color:var(--red)}
+.result{font-size:16px;color:var(--ink)!important;font-weight:700}
+
+/* fim */
+.pts{font-family:Cinzel,serif;font-size:46px;color:var(--gold);text-shadow:0 3px 0 #000;margin-top:6px}
+.pts small{font-size:18px}
+.statg{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:10px 0}
+.statg span{display:grid;background:#0e1838;border-radius:8px;padding:8px 14px;font-size:12px;color:var(--muted);font-weight:700}
+.statg b{font-size:20px;color:var(--ink)}
+
+/* guilda */
+.rv-guild{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;align-items:start}
+.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.room{display:grid;justify-items:center;gap:6px;text-align:center;padding:16px 10px;border-radius:10px;background:linear-gradient(170deg,#16244f,#0b1430);border:2px solid #f4f1ea44}
+.room .f{width:84px;height:84px;border:3px solid var(--gold);box-shadow:0 0 0 2px var(--edge)}
+.room b{font-family:Cinzel,serif;font-size:15px}.room small{font-size:12px;color:var(--muted)}
+.room em{font-style:normal;font-size:12px;font-weight:900;border:2px solid currentColor;border-radius:12px;padding:1px 10px;color:var(--gold)}
+.room.lock .f{filter:grayscale(1) brightness(.55);border-color:#777}.room.lock{opacity:.8}
+.room.on{border-color:var(--gold);box-shadow:0 0 16px #f5c54244}
+.hist{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+
+@media (max-width:980px){
+  .rv-map,.rv-grid2,.rv-guild{grid-template-columns:1fr}
+  .party{margin-left:0}
+  .slots{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .pc{min-width:0;padding-right:8px}.pc .bars{min-width:56px}
+  .slots,.slots.c3{grid-template-columns:1fr}
+  .xpbar{width:120px}
+}

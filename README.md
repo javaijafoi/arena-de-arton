@@ -5,6 +5,7 @@ Simulador de combate tático por turnos de **Tormenta 20**, direto no navegador.
 **▶ Jogar:** https://arena-de-arton.vercel.app · **🌴 Portfólio:** https://javaijafoi.vercel.app
 
 ## O que tem
+- **Modo roguelike:** escolha o caminho num mapa de andar, enfrente batalhas e um chefe; ferimentos, poções e ouro passam de uma luta para a outra; a pontuação fica entre runs e libera coisas novas (progresso salvo só no seu navegador, em localStorage)
 - Grade 16×12 (1,5 m por quadrado), visão de cima, movimento e alcance destacados
 - 9 heróis e magias até o 4º círculo
 - Escada de 10 encontros (níveis 1 a 14), inimigos controlados por IA (ou você controla os dois lados)
@@ -19,6 +20,7 @@ Abra `index.html` (ou sirva a pasta com qualquer servidor estático). Testes sem
 node test/sim.js 30       # IA x IA na escada de encontros
 node test/magias.js       # lança todas as magias
 node test/mecanicas.js    # voo, cegueira, manobras
+node test/run-sim.js      # simulação do modo roguelike
 ```
 
 ## Sobre imagens e licença

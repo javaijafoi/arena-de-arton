@@ -153,21 +153,29 @@
   /* ---------- dano e morte ---------- */
   function causarDano(st, alvo, valor, tipo, ev, fonte) {
     if (!alvo.vivo) return 0;
-    let v = Math.max(0, valor);
+    let v = Math.max(0, valor); const jaCaido = alvo.pv <= 0;
     if (alvo.rd && tipo !== 'essência' && tipo !== 'luz') v = Math.max(0, v - alvo.rd);
     if (alvo.buff.furia && alvo.nivel >= 1 && tipo !== 'essência') v = Math.max(0, v - (alvo.buff.furiaRd || 0));
     alvo.pv -= v;
     ev.push({ t: 'dano', id: alvo.id, v, tipo, pv: alvo.pv });
     if (v > 0 && tem(alvo, 'inconsciente') && alvo.cond.inconsciente.sono) { delete alvo.cond.inconsciente; ev.push({ t: 'texto', id: alvo.id, txt: 'acorda!' }); }
-    verificarQueda(st, alvo, ev);
+    verificarQueda(st, alvo, ev, v > 0 && jaCaido);
     return v;
   }
   function soltarAgarrao(st, u, ev) {
     if (u.buff.agarrando) { const o = porId(st, u.buff.agarrando); if (o && o.cond.agarrado && o.cond.agarrado.por === u.id) { delete o.cond.agarrado; ev && ev.push({ t: 'fimCond', id: o.id, cond: 'agarrado' }); } delete u.buff.agarrando; }
     if (u.cond.agarrado) { const o = porId(st, u.cond.agarrado.por); if (o) delete o.buff.agarrando; delete u.cond.agarrado; ev && ev.push({ t: 'fimCond', id: u.id, cond: 'agarrado' }); }
   }
-  function verificarQueda(st, u, ev) {
+  function verificarQueda(st, u, ev, golpeNoCaido) {
     if (!u.vivo || u.pv > 0) return;
+    if (st.cfg.run && u.lado === 'h') { // roguelike: 0 PV = desmaia (sem sangrar); dano no desmaiado ou crítico que derruba = morre
+      const limite = Math.min(-10, -Math.floor(u.pvMax / 2));
+      const motivo = u.pv <= limite ? 'golpe massivo' : golpeNoCaido ? 'golpe no desmaiado' : st._critico ? 'crítico' : null;
+      soltarAgarrao(st, u, ev);
+      if (motivo) { u.vivo = false; u.cond = {}; ev.push({ t: 'morte', id: u.id }); st.log.push(`☠ ${u.nome} morre (${motivo}).`); return; }
+      if (!tem(u, 'inconsciente') || u.cond.inconsciente.sono) { u.cond.inconsciente = { r: 999 }; u.cond.caido = { r: 999 }; ev.push({ t: 'cond', id: u.id, cond: 'inconsciente' }); st.log.push(`${u.nome} desmaia! Se sofrer mais dano, morre.`); }
+      return;
+    }
     soltarAgarrao(st, u, ev);
     if (u.lado === 'm') { u.vivo = false; u.cond = {}; ev.push({ t: 'morte', id: u.id }); st.log.push(`☠ ${u.nome} cai.`); return; }
     const limite = Math.min(-10, -Math.floor(u.pvMax / 2));
@@ -190,7 +198,7 @@
     const st = { seed: cfg.seed >>> 0 || 12345, mapa: { ...MAPAS[cfg.mapa], id: cfg.mapa }, unidades: [], ordem: [], vez: 0, rodada: 1, log: [], fim: null, teia: [], turnoId: 0, cfg: { ...cfg } };
     cfg.herois.forEach((h, i) => st.unidades.push(criarHeroi(h, cfg.nivel, i)));
     cfg.inimigos.forEach((m, i) => st.unidades.push(criarCriatura(m, i)));
-    posicionar(st, st.unidades.filter(u => u.lado === 'h'), [1, 2, 3, 0]);
+    posicionarHerois(st);
     posicionar(st, st.unidades.filter(u => u.lado === 'm'), [13, 12, 14, 11, 15]);
     // iniciativa
     const ini = st.unidades.map(u => ({ u, r: d(st, 20) + u.per.inic }));
@@ -201,6 +209,36 @@
     const ev = []; iniciarTurno(st, ev); st.eventosIniciais = ev;
     return st;
   }
+  /* ---------- zona de posicionamento (antes da batalha, estilo FFT) ---------- */
+  function zonaHerois(st) {
+    const z = st.mapa.zona || { x: [0, 3], y: [3, 8] }; const cel = [];
+    for (let y = z.y[0]; y <= z.y[1]; y++) for (let x = z.x[0]; x <= z.x[1]; x++) if (passavel(st, x, y) && terreno(st, x, y) !== 'T') cel.push({ x, y });
+    return cel;
+  }
+  const FRENTE = ['guerreiro', 'barbaro', 'paladino', 'cavaleiro', 'clerigo', 'ladino'];
+  function posicionarHerois(st) {
+    const zona = zonaHerois(st); const meio = zona.reduce((a, c) => a + c.y, 0) / (zona.length || 1);
+    const frente = zona.slice().sort((a, b) => b.x - a.x || Math.abs(a.y - meio) - Math.abs(b.y - meio));
+    const herois = st.unidades.filter(u => u.lado === 'h');
+    const ordem = herois.filter(u => FRENTE.includes(u.classe)).concat(herois.filter(u => !FRENTE.includes(u.classe)));
+    const tras = zona.slice().sort((a, b) => a.x - b.x || Math.abs(a.y - meio) - Math.abs(b.y - meio)); const usadas = new Set(); const k = c => c.x + ',' + c.y;
+    for (const u of ordem) {
+      const lista = FRENTE.includes(u.classe) ? frente : tras;
+      const c = lista.find(c => !usadas.has(k(c)));
+      if (c) { usadas.add(k(c)); u.x = c.x; u.y = c.y; } else posicionar(st, [u], [1, 2, 3, 0]);
+    }
+    st.preparo = true;
+  }
+  /* troca de lugar durante o preparo: move o herói para uma casa da zona (troca se já houver herói lá) */
+  function reposicionar(st, id, x, y) {
+    if (!st.preparo) return 'A batalha já começou.';
+    const u = porId(st, id); if (!u || u.lado !== 'h') return 'Escolha um herói.';
+    if (!zonaHerois(st).some(c => c.x === x && c.y === y)) return 'Fora da zona de posicionamento.';
+    const o = unidadeEm(st, x, y); if (o && o.lado !== 'h') return 'Casa ocupada.';
+    if (o && o !== u) { o.x = u.x; o.y = u.y; }
+    u.x = x; u.y = y; return null;
+  }
+  function comecar(st) { st.preparo = false; }
   function posicionar(st, lista, colunas) {
     const linhasPref = [5, 6, 4, 7, 3, 8, 2, 9, 1, 10];
     let k = 0;
@@ -308,9 +346,9 @@
   function perfisDeAtaque(u, distancia) {
     if (u.lado === 'h') {
       const a = u.arma; if (!!a.distancia !== !!distancia) return null;
-      const base = (a.distancia ? u.per.pont : u.per.luta) + a.bonusItem;
+      const base = (a.distancia ? u.per.pont : u.per.luta) + a.bonusItem + (a.bonusAtaque || 0);
       const forDano = a.distancia ? 0 : u.attr.for + (a.duasMaos ? Math.floor(u.attr.for / 2) : 0);
-      return [{ nome: a.nome, bonus: base, dano: [a.dano[0], a.dano[1], forDano + a.bonusItem + (u.bonusDano || 0)], margem: a.margem, mult: a.mult, tipo: a.tipo, alcance: a.alcance }];
+      return [{ nome: a.nome, bonus: base, dano: [a.dano[0], a.dano[1], forDano + a.bonusItem + (u.bonusDano || 0)], margem: a.margem, mult: a.mult, tipo: a.tipo, alcance: a.alcance, extra: a.extra || null }];
     }
     if (distancia) return u.distancia ? [{ ...u.distancia }] : null;
     return u.ataques.map(x => ({ ...x, alcance: 1 }));
@@ -382,7 +420,7 @@
     if (perfil.extra) { extra += soma(rolar(st, perfil.extra[0], perfil.extra[1])); partes.push(perfil.extra[0] + 'd' + perfil.extra[1] + ' ' + perfil.extra[2]); }
     dano = Math.max(1, dano + extra);
     st.log.push(`${at.nome} → ${alvo.nome} (${perfil.nome}): ${r}+${bonus}=${total} vs Def ${defo.valor} — ${critico ? 'CRÍTICO! ' : 'acertou: '}${dano} de dano (${partes.join(' + ')}).${txtMods}`);
-    const real = causarDano(st, alvo, dano, perfil.tipo, ev, at);
+    st._critico = critico; const real = causarDano(st, alvo, dano, perfil.tipo, ev, at); st._critico = false;
     if (alvo.cond.fintado && alvo.cond.fintado.por === at.id) delete alvo.cond.fintado;
     if (perfil.derrubar && alvo.vivo && !tem(alvo, 'caido') && !alvo.voo) {
       // derrubar: manobra oposta simplificada
@@ -427,7 +465,7 @@
   /* ---------- opções do turno (para interface e IA) ---------- */
   function opcoes(st) {
     const u = atual(st); if (!u || st.fim) return null;
-    const ops = { unidade: u.id, mover: null, atacar: [], distancia: [], investida: [], magias: [], habilidades: [], levantar: false, apagar: false };
+    const ops = { unidade: u.id, mover: null, atacar: [], distancia: [], investida: [], magias: [], habilidades: [], levantar: false, apagar: false, itens: itensUsaveis(st, u) };
     if (tem(u, 'caido') && (u.acoes.movimento || u.acoes.padrao)) ops.levantar = true;
     if (tem(u, 'emChamas') && (u.acoes.padrao || u.acoes.extra)) ops.apagar = true;
     if (podeMover(u)) ops.mover = alcancaveis(st, u, deslocAtual(u)).celulas;
@@ -581,6 +619,7 @@
       case 'soltar': { if (!u.buff.agarrando) return falha('Não está agarrando ninguém.'); st.log.push(`${u.nome} solta o alvo.`); soltarAgarrao(st, u, ev); break; }
       case 'magia': { const r = lancarMagia(st, u, acao, ev); if (r) return falha(r); break; }
       case 'habilidade': { const r = usarHabilidade(st, u, acao, ev); if (r) return falha(r); break; }
+      case 'item': { const r = usarItem(st, u, acao, ev); if (r) return falha(r); break; }
       case 'fim': encerrarTurno(st, ev); return { ok: true, ev };
       default: return falha('Ação desconhecida.');
     }
@@ -589,6 +628,51 @@
     if (!st.fim && !u.acoes.padrao && !u.acoes.movimento && !u.acoes.extra && !alvosArma(st, u).length) { encerrarTurno(st, ev, true); }
     else if (!st.fim && (!u.vivo || incapaz(u))) encerrarTurno(st, ev, true);
     return { ok: true, ev };
+  }
+
+  /* ---------- itens do cinto (modo roguelike) ---------- */
+  const ITENS_CINTO = {
+    pocao: { nome: 'Poção de Curar Ferimentos', acao: 'padrao', cura: [2, 8, 2] },
+    pocaoMaior: { nome: 'Poção maior', acao: 'padrao', cura: [4, 8, 4] },
+    oleo: { nome: 'Óleo de Arma Mágica', acao: 'movimento', proprio: true },
+    protecao: { nome: 'Proteção Divina', acao: 'movimento', proprio: true },
+    velocidade: { nome: 'Poção de Velocidade', acao: 'movimento', proprio: true },
+    granada: { nome: 'Granada de Bola de Fogo', acao: 'padrao', area: [6, 6], cd: 15 },
+  };
+  function itensUsaveis(st, u) {
+    if (!u.cinto) return [];
+    return u.cinto.map((id, k) => {
+      const I = id && ITENS_CINTO[id]; if (!I) return null;
+      const pode = I.acao === 'padrao' ? (u.acoes.padrao || u.acoes.extra) : (u.acoes.movimento || u.acoes.padrao || u.acoes.extra);
+      let alvos = [];
+      if (I.cura) alvos = st.unidades.filter(o => o.vivo && o.lado === u.lado && (o === u || adjacente(u, o)) && o.pv < o.pvMax).map(o => o.id);
+      else if (I.area) alvos = inimigosDe(st, u).filter(o => dist(u, o) <= ALCANCE.medio && visao(st, u, o).ve).map(o => o.id);
+      else if (id === 'oleo') alvos = u.buff.oleo ? [] : [u.id];
+      else if (id === 'protecao') alvos = u.buff.protecao ? [] : [u.id];
+      else if (id === 'velocidade') alvos = u.buff.velocidade ? [] : [u.id];
+      return { k, id, nome: I.nome, acao: I.acao, alvos, pode: pode && alvos.length > 0, proprio: !!I.proprio };
+    }).filter(Boolean);
+  }
+  function usarItem(st, u, acao, ev) {
+    const it = itensUsaveis(st, u).find(x => x.k === acao.slot); if (!it) return 'Item indisponível.';
+    if (!it.pode) return 'Sem ação ou sem alvo para esse item.';
+    const alvoId = acao.alvo || (it.proprio ? u.id : null); if (!it.alvos.includes(alvoId)) return 'Alvo inválido para o item.';
+    const alvo = porId(st, alvoId); const I = ITENS_CINTO[it.id];
+    if (!gastar(u, I.acao === 'padrao' ? 'padrao' : 'movimento')) return 'Sem ação.';
+    u.cinto[it.k] = null; ev.push({ t: 'item', id: u.id, item: it.id, alvo: alvo.id });
+    if (I.cura) { const v = soma(rolar(st, I.cura[0], I.cura[1])) + I.cura[2]; st.log.push(`🧪 ${u.nome} ${alvo === u ? 'bebe' : 'dá a ' + alvo.nome} ${I.nome} (+${v} PV).`); ev.push({ t: 'fx', fx: 'cura', de: u.id, para: alvo.id }); curar(st, alvo, v, ev); }
+    else if (it.id === 'oleo') { u.buff.oleo = 1; u.arma.bonusAtaque = (u.arma.bonusAtaque || 0) + 1; u.bonusDano = (u.bonusDano || 0) + 1; ev.push({ t: 'texto', id: u.id, txt: '+1 arma' }); st.log.push(`🫙 ${u.nome} passa óleo na arma (+1 ataque e dano).`); }
+    else if (it.id === 'protecao') { u.buff.protecao = 2; u.per.fort += 2; u.per.ref += 2; u.per.von += 2; ev.push({ t: 'texto', id: u.id, txt: '+2 resist.' }); st.log.push(`✨ ${u.nome} bebe Proteção Divina (+2 em resistências).`); }
+    else if (it.id === 'velocidade') { u.buff.velocidade = true; u.acoes.extra = true; ev.push({ t: 'texto', id: u.id, txt: 'acelerado!' }); st.log.push(`⚡ ${u.nome} bebe Velocidade: ação extra por turno.`); }
+    else if (I.area) {
+      const alvos = st.unidades.filter(o => o.vivo && dist(o, alvo) <= 1);
+      const cel = []; for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) if (terreno(st, alvo.x + dx, alvo.y + dy) !== null) cel.push({ x: alvo.x + dx, y: alvo.y + dy });
+      ev.push({ t: 'magia', id: u.id, magia: 'bolaDeFogo', fx: 'fogo', cor: '#ff7a2a', celulas: cel, alvos: alvos.map(a => a.id), ponto: { x: alvo.x, y: alvo.y } });
+      st.log.push(`💣 ${u.nome} arremessa uma granada de bola de fogo!`); const v = soma(rolar(st, I.area[0], I.area[1])); const antes = new Map(alvos.map(o => [o, o.pv]));
+      for (const o of alvos) { const ok = resistencia(st, o, 'ref', I.cd, ev); let vv = ok ? Math.floor(v / 2) : v; if (ok && o.habilidades && o.habilidades.includes('evasao')) vv = 0; causarDano(st, o, vv, 'fogo', ev); }
+      resumoPV(st, antes);
+    }
+    return null;
   }
 
   /* Percorre um caminho casa a casa. Com a regra opcional de ataque de oportunidade, sair
@@ -842,6 +926,6 @@
 
   const API = { COLS, ROWS, novaBatalha, executar, opcoes, atual, porId, alcancaveis, deslocAtual, areaMagia, alvosValidosMagia, custoMagia, alcanceMagia,
     visao, dist, adjacente, terreno, passavel, dificil, unidadeEm, incapaz, tem, defesa, perfisDeAtaque, flanqueado, emCorpoACorpo, inimigosDe, aliadosDe,
-    criarHeroi, criarCriatura, circuloMax, NOME_COND, linhaCelulas, distEuc, previsaoAtaque, desprevenido };
+    criarHeroi, criarCriatura, circuloMax, itensUsaveis, ITENS_CINTO, zonaHerois, reposicionar, comecar, NOME_COND, linhaCelulas, distEuc, previsaoAtaque, desprevenido };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.T20 = API;
 })(this);
