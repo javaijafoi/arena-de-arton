@@ -130,7 +130,7 @@
     return out;
   }
   function telaPre() {
-    const m = S.meta; const ouro = 150 + (RUN.liberado(m, 'bolsaRica') ? 100 : 0);
+    const m = S.meta; const ouro = 150 + (RUN.tem(m, 'bolsaRica') ? 100 : 0);
     S.pre = S.pre || { grupo: grupoAleatorio(3), compras: { racao: 0, pocao: 0, barraca: 0, oleo: 0 }, bau: [] };
     const P = S.pre; const PRECOS = { racao: I('racao').preco, pocao: I('pocao').preco, barraca: I('barraca').preco, oleo: I('oleo').preco };
     const gasto = Object.entries(P.compras).reduce((a, [k, v]) => a + v * PRECOS[k], 0); const resta = ouro - gasto;
@@ -170,13 +170,14 @@
     $('pIr').onclick = () => {
       clique(); store.set('arena.grupo', P.grupo);
       const itens = P.bau.map(k => m.bau[k]); m.bau = m.bau.filter((_, k) => !P.bau.includes(k));
-      const run = RUN.novaRun({ herois: P.grupo, ouro: resta, itens, nivel: RUN.liberado(m, 'nivel2') ? 2 : 1 });
+      const run = RUN.novaRun({ herois: P.grupo, ouro: resta, itens, nivel: RUN.tem(m, 'nivel2') ? 2 : 1, treino: m.treino || {} });
+      if (RUN.tem(m, 'armeiro')) for (const x of run.herois) if (!x.equip.arma) x.equip.arma = 'certeira';
       run.bolsa.racao += P.compras.racao; run.bolsa.barraca += P.compras.barraca;
       for (let i = 0; i < P.compras.pocao; i++) RUN.darItem(run, 'pocao');
       for (let i = 0; i < P.compras.oleo; i++) RUN.darItem(run, 'oleo');
       // equipa sozinho os itens do baú no primeiro herói com o espaço livre
       for (let k = run.mochila.length - 1; k >= 0; k--) { const it = I(run.mochila[k]); const hi = run.herois.findIndex(x => ['arma', 'armadura', 'acessorio'].includes(it.slot) && !x.equip[it.slot]); if (hi >= 0) RUN.equipar(run, hi, k); }
-      run.templo = RUN.liberado(m, 'templo');
+      run.templo = RUN.tem(m, 'templo');
       S.run = run; S.pre = null; S.sel = null; salvar(); telaMapa();
     };
   }
@@ -423,8 +424,9 @@
       <div class="faces">${run.herois.map(x => `<div class="${x.morto ? 'x' : ''}" style="background-image:${PX(H(x.hid).token)}" title="${esc(H(x.hid).nome)}"></div>`).join('')}</div>
       <div class="pts">+${r.pts.toLocaleString('pt-BR')} <small>pontos</small></div><p class="mut">Total: ${r.total.toLocaleString('pt-BR')} pontos (XP que cada herói ganhou${r.venceu ? ' + 2.000 pela vitória' : ''})</p>
       <div class="statg"><span><b>${r.nivel}</b>nível final</span><span><b>${st.batalhas}</b>batalhas</span><span><b>${st.abates}</b>inimigos</span><span><b>${st.mortes}</b>mortes</span><span><b>T$ ${st.ouroGanho}</b>ouro achado</span></div>`;
-    if (r.venceu && r.fica.length) h += `<div class="news">🎒 <b>Ficam no baú da guilda:</b> ${r.fica.map(i => I(i).ic + ' ' + esc(I(i).nome)).join(', ')}${r.ouro ? ` · T$ ${r.ouro} guardados` : ''}</div>`;
-    else if (!r.venceu) h += `<p class="mut">Perdeu a run: itens e ouro ficam pelo caminho. O nível volta ao 1º na próxima.</p>`;
+    if (r.venceu && r.fica.length) h += `<div class="news">🎒 <b>Ficam no baú da guilda:</b> ${r.fica.map(i => I(i).ic + ' ' + esc(I(i).nome)).join(', ')}</div>`;
+    if (r.ouro) h += `<div class="news">💰 <b>T$ ${r.ouro.toLocaleString('pt-BR')} vão para o cofre da guilda</b>${r.guardado ? ' (o Banco guardou 25%)' : ''}. Cofre: T$ ${S.meta.ouro.toLocaleString('pt-BR')}.</div>`;
+    if (!r.venceu) h += `<p class="mut">Perdeu a run: itens${r.guardado ? '' : ' e ouro'} ficam pelo caminho. O nível volta ao 1º na próxima.</p>`;
     for (const m of r.novos) h += `<div class="news unlock">🔓 <b>Liberado: ${esc(m.nome)}</b><br>${esc(m.desc)}</div>`;
     const prox = RUN.MARCOS.find(x => S.meta.pontos < x.pts); if (prox) h += `<p class="mut">Próximo marco: ${esc(prox.nome)} em ${prox.pts.toLocaleString('pt-BR')} pontos.</p>`;
     h += `<div class="row" style="justify-content:center"><button class="btn gold bbig" id="fNova">⚔ Nova run</button>${RUN.liberado(S.meta, 'guilda') ? '<button class="btn bbig" id="fGuilda">🏛 Guilda</button>' : ''}<button class="btn" id="fMenu">Menu</button></div></div>`;
@@ -438,31 +440,52 @@
   /* ---------- guilda: salão com balcões e NPCs ---------- */
   const SALAS = [
     { id: 'bau', nome: 'Baú e Vitrine', npc: 'aegoron', quem: 'Sir Aegoron', fala: 'Guardo o que vocês trazem. Vendo pela metade, nem um tibar a mais.', desc: 'Itens trazidos de volta', marco: 'guilda' },
-    { id: 'tesouraria', nome: 'Tesouraria', npc: 'dame-lia', quem: 'Dame Lia', fala: 'Uma família rica abre muitas portas. E bolsas.', desc: '+T$ 100 na partida', marco: 'bolsaRica' },
-    { id: 'templo', nome: 'Templo', npc: 'hanalendariana', quem: 'Hanalendariana', fala: 'A fogueira pode trazer alguém de volta. Uma vez.', desc: 'Reviver 1×/run', marco: 'templo' },
-    { id: 'torre', nome: 'Torre de treino', npc: 'zaldrin', quem: 'Zaldrin', fala: 'Treino antes da estrada. Menos susto depois.', desc: 'Começar no nível 2', marco: 'nivel2' },
+    { id: 'tesouraria', nome: 'Tesouraria', npc: 'dame-lia', quem: 'Dame Lia', fala: 'Ouro parado não salva ninguém. Ouro bem guardado, às vezes salva.', desc: 'Banco e família rica', marco: 'guilda', ofertas: ['banco', 'bolsaRica'] },
+    { id: 'quartel', nome: 'Pátio de treino', npc: 'mari-labareda', quem: 'Mari Labareda', fala: 'Suor no pátio, menos sangue na estrada. Pague o mestre e treine a classe.', desc: '+PV por classe', marco: 'guilda', treino: true },
+    { id: 'ferraria', nome: 'Ferraria', npc: 'durgalinn', quem: 'Durgalinn', fala: 'Aço bom custa caro. Aço ruim custa a vida.', desc: 'Arma superior na partida', marco: 'bolsaRica', ofertas: ['armeiro'] },
+    { id: 'templo', nome: 'Templo', npc: 'hanalendariana', quem: 'Hanalendariana', fala: 'A fogueira pode trazer alguém de volta. Uma vez.', desc: 'Reviver 1×/run', marco: 'templo', ofertas: ['templo'] },
+    { id: 'torre', nome: 'Torre de treino', npc: 'zaldrin', quem: 'Zaldrin', fala: 'Treino antes da estrada. Menos susto depois.', desc: 'Começar no nível 2', marco: 'nivel2', ofertas: ['nivel2'] },
   ];
-  function telaGuilda(aba) {
+  const ptsTxt = n => n.toLocaleString('pt-BR');
+  function telaGuilda(aba, aviso) {
     const m = S.meta; aba = aba || 'bau';
-    let h = barra('Guilda dos Aventureiros', `<span>🏅 ${m.pontos.toLocaleString('pt-BR')}</span><span class="gold">T$ ${m.ouro} no cofre</span>`);
+    let h = barra('Guilda dos Aventureiros', `<span>🏅 ${ptsTxt(m.pontos)}</span><span class="gold">T$ ${ptsTxt(m.ouro)} no cofre</span>`);
     h += '<div class="pgu"><div class="salao"><span class="ban" style="left:14%"></span><span class="ban" style="left:48%"></span><span class="ban" style="left:82%"></span>';
     for (const s of SALAS) {
       const mk = RUN.MARCOS.find(x => x.id === s.marco); const ok = m.pontos >= mk.pts;
-      h += `<button class="balcao${ok ? '' : ' fechado'}${aba === s.id ? ' on' : ''}" data-sala="${s.id}"><span class="tg">${ok ? 'ABERTO' : mk.pts.toLocaleString('pt-BR') + ' pts'}</span>${face(s.npc)}<div class="mesa">${ok ? '' : '🔒 '}${s.nome}<small>${s.desc}</small></div></button>`;
+      const feito = s.ofertas && s.ofertas.every(id => RUN.tem(m, id));
+      h += `<button class="balcao${ok ? '' : ' fechado'}${aba === s.id ? ' on' : ''}" data-sala="${s.id}"><span class="tg">${!ok ? ptsTxt(mk.pts) + ' pts' : feito ? '✓ COMPRADO' : 'ABERTO'}</span>${face(s.npc)}<div class="mesa">${ok ? '' : '🔒 '}${s.nome}<small>${s.desc}</small></div></button>`;
     }
     h += '</div>';
     const sala = SALAS.find(s => s.id === aba); const mk = RUN.MARCOS.find(x => x.id === sala.marco); const ok = m.pontos >= mk.pts;
     h += `<div class="scroll npc-p"><div class="hd">${face(sala.npc)}<div><small class="tag" style="color:#7a5a1a">${sala.nome.toUpperCase()}</small><h3>${esc(sala.quem)}</h3><q>${esc(sala.fala)}</q></div></div>`;
-    h += `<p><b>${esc(mk.nome)}:</b> ${esc(mk.desc)}</p>`;
-    if (!ok) h += `<p>Faltam <b>${(mk.pts - m.pontos).toLocaleString('pt-BR')}</b> pontos. A pontuação é o XP que seus heróis acumulam em todas as runs.</p>`;
+    if (aviso) h += `<p class="redt"><b>${esc(aviso)}</b></p>`;
+    if (!ok) h += `<p><b>${esc(mk.nome)}:</b> ${esc(mk.desc)}</p><p>Faltam <b>${ptsTxt(mk.pts - m.pontos)}</b> pontos. A pontuação é o XP que seus heróis acumulam em todas as runs.</p>`;
     else if (aba === 'bau') {
-      h += m.bau.length ? `<p class="mut">Na pré-run você pode levar até 2 destes itens. Vender à guilda rende metade do preço do livro (o ouro fica no cofre).</p><div class="bau">${m.bau.map((id, k) => `<div class="itm"><span>${I(id).ic}</span>${esc(I(id).nome)}<em>${esc(I(id).desc)}</em><button class="btn sm" data-gv="${k}">Vender por T$ ${Math.floor(I(id).preco / 2).toLocaleString('pt-BR')}</button></div>`).join('')}</div>` : '<p class="mut">O baú está vazio. Itens equipados e da mochila voltam com você quando o grupo vence o andar.</p>';
-    } else h += '<p class="okt"><b>Já está valendo nas suas runs.</b></p>';
-    h += `<h3 style="margin-top:12px">Histórico</h3>${m.historico.length ? '<div class="hist">' + m.historico.slice(0, 6).map(x => `<div>${x.venceu ? '🏆' : '💀'} nível ${x.nivel} · +${x.pts.toLocaleString('pt-BR')} pts · ${x.herois.map(hid => H(hid).nome.split(' ')[0]).join(', ')}</div>`).join('') + '</div>' : '<p class="mut">Nenhuma run ainda.</p>'}`;
+      h += m.bau.length ? `<p class="mut">Na pré-run você pode levar até 2 destes itens. Vender à guilda rende metade do preço do livro (o ouro fica no cofre).</p><div class="bau">${m.bau.map((id, k) => `<div class="itm"><span>${I(id).ic}</span>${esc(I(id).nome)}<em>${esc(I(id).desc)}</em><button class="btn sm" data-gv="${k}">Vender por T$ ${ptsTxt(Math.floor(I(id).preco / 2))}</button></div>`).join('')}</div>` : '<p class="mut">O baú está vazio. Itens equipados e da mochila voltam com você quando o grupo vence o andar.</p>';
+    } else if (sala.treino) {
+      h += `<p class="mut">Cada treino dá +${RUN.PV_TREINO} PV fixos a todo herói daquela classe, em todas as runs. Até ${RUN.TREINO_CUSTO.length} treinos por classe.</p><div class="ofs">`;
+      for (const [cid, C] of Object.entries(D.CLASSES)) {
+        if (!D.HEROIS.some(x => x.classe === cid)) continue;
+        const n = (m.treino || {})[cid] || 0; const c = RUN.custoTreino(m, cid);
+        h += `<div class="of"><div><b>${esc(C.nome)}</b><small>${'■'.repeat(n)}${'□'.repeat(RUN.TREINO_CUSTO.length - n)} · +${n * RUN.PV_TREINO} PV</small></div>${c == null ? '<span class="okt">completo</span>' : `<button class="btn sm${m.ouro >= c ? ' gold' : ''}" data-treino="${cid}" ${m.ouro >= c ? '' : 'disabled'}>T$ ${ptsTxt(c)}</button>`}</div>`;
+      }
+      h += '</div>';
+    } else {
+      h += '<div class="ofs">';
+      for (const id of sala.ofertas) {
+        const M = RUN.MELHORIAS.find(x => x.id === id); const lib = RUN.liberado(m, M.marco); const comprado = RUN.tem(m, id);
+        h += `<div class="of"><div><b>${esc(M.nome)}</b><small>${esc(M.desc)}</small></div>${comprado ? '<span class="okt">✓ valendo</span>' : !lib ? `<span class="mut">🔒 ${ptsTxt(RUN.MARCOS.find(x => x.id === M.marco).pts)} pts</span>` : `<button class="btn sm${m.ouro >= M.custo ? ' gold' : ''}" data-melh="${id}" ${m.ouro >= M.custo ? '' : 'disabled'}>T$ ${ptsTxt(M.custo)}</button>`}</div>`;
+      }
+      h += '</div><p class="mut">O cofre enche com o ouro que sobra das runs vencidas (e 25% das perdidas, com o Banco).</p>';
+    }
+    h += `<h3 style="margin-top:12px">Histórico</h3>${m.historico.length ? '<div class="hist">' + m.historico.slice(0, 6).map(x => `<div>${x.venceu ? '🏆' : '💀'} nível ${x.nivel} · +${ptsTxt(x.pts)} pts · ${x.herois.map(hid => H(hid).nome.split(' ')[0]).join(', ')}</div>`).join('') + '</div>' : '<p class="mut">Nenhuma run ainda.</p>'}`;
     h += '</div></div>';
     mostrar(h, 'guilda'); ligarBarra();
     ligar('[data-sala]', d => telaGuilda(d.sala));
     ligar('[data-gv]', d => { RUN.vendaGuilda(m, +d.gv); salvar(); telaGuilda('bau'); });
+    ligar('[data-melh]', d => { const e = RUN.comprarMelhoria(m, d.melh); salvar(); telaGuilda(aba, e); });
+    ligar('[data-treino]', d => { const e = RUN.comprarTreino(m, d.treino); salvar(); telaGuilda(aba, e); });
   }
 
   function continuar() { if (!S.run) return telaPre(); if (S.run.fim) return telaFim(); telaMapa(); }

@@ -242,6 +242,13 @@ h1,h2,h3{font-family:Cinzel,Georgia,serif;margin:0;letter-spacing:.04em;text-wra
   .big{aspect-ratio:2.4}
   #top h1{font-size:18px}
 }
+#mira{position:fixed;z-index:80;top:max(10px,env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;max-width:calc(100vw - 20px)}
+#mira .mi-t{display:grid;font-size:12px;font-weight:800;line-height:1.25;color:var(--ink)}
+#mira .mi-al{color:#ffb3b3;font-weight:900}
+#mira .mi-b{width:44px;height:38px;border-radius:8px;border:2px solid var(--ink);font-size:22px;font-weight:900;line-height:1;box-shadow:0 0 0 2px var(--edge),0 3px 0 #0b1430;flex:none}
+#mira .mi-b.ok{background:linear-gradient(#5fe07a,#1f9a3c);color:#fff;width:58px}
+#mira .mi-b.x{background:linear-gradient(#e0505a,#9b2430);color:#fff}
+#game.hidden ~ #mira{display:none}
 </style>
 </head>
 <body>
