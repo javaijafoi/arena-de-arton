@@ -2,7 +2,7 @@
 
 Simulador de combate tático por turnos de **Tormenta 20**, direto no navegador. Grátis, sem cadastro, sem backend.
 
-**▶ Jogar:** https://arena-de-arton.vercel.app · **🌴 Portfólio:** https://javaijafoi.vercel.app
+**▶ Jogar:** https://arena.javaijafoi.dev · **🌴 Portfólio:** https://javaijafoi.dev
 
 ## O que tem
 - **Modo roguelike:** 5 andares até o nível 20 (1→4, 4→8, 8→12, 12→16, 16→20), cada um com mapa, batalhas e um chefe, e o chefe final no andar 5; entre andares uma cidade cura o grupo e revive os caídos por ouro. Os monstros dos andares 2 a 5 têm nomes de Ameaças de Arton e números ajustados ao poder dos heróis do jogo (`js/bestiario.js`); ferimentos, poções e ouro passam de uma luta para a outra; a pontuação fica entre runs e libera coisas novas (progresso salvo no navegador e, opcionalmente, na nuvem com um código por aparelho; `js/nuvem.js` usa só a chave publicável do Supabase e chama as funções `arena_salvar`/`arena_carregar`)
@@ -32,4 +32,4 @@ node test/calibra.js                # lutas isoladas e chefes de cada andar
 - **Obra não oficial**, não aprovada nem apoiada pela Jambô Editora. *Tormenta20*, o cenário de Arton e seus nomes pertencem à [Jambô Editora](https://jamboeditora.com.br). Regras implementadas de forma simplificada; algumas fichas são aproximações.
 
 ## 🌴 Mais do Peter
-Veja os outros projetos no [portfólio](https://javaijafoi.vercel.app).
+Veja os outros projetos no [portfólio](https://javaijafoi.dev).
