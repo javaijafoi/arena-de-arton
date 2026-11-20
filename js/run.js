@@ -5,6 +5,7 @@
   'use strict';
   const node = typeof module !== 'undefined' && module.exports;
   const D = node ? require('./data.js') : root.T20DATA;
+  if (node) require('./bestiario.js'); // soma as criaturas dos andares 2 a 5 em D.CRIATURAS
   const R = node ? require('./rules.js') : root.T20;
 
   /* ---------- dado semeado da run ---------- */
@@ -21,7 +22,7 @@
   /* ---------- regras do livro usadas aqui ---------- */
   // XP necessário por nível (tabela de T20): 2º = 1.000, 3º = 3.000, 4º = 6.000 ...
   const XP_NIVEL = [0, 0, 1000, 3000, 6000, 10000, 15000, 21000, 28000, 36000, 45000, 55000, 66000, 78000, 91000, 105000, 120000, 136000, 153000, 171000, 190000];
-  // ajuste do roguelike: o andar tem ~8 batalhas, então o XP do livro é acelerado para o grupo chegar ao chefe no 3º nível
+  // ajuste do roguelike: o andar tem ~8 batalhas, então o XP do livro é acelerado (o grupo chega ao chefe perto do teto do andar)
   const XP_MULT = 1.5;
   const nivelDoXP = xp => { let n = 1; while (n < 20 && xp >= XP_NIVEL[n + 1]) n++; return n; };
   // ND de um grupo de inimigos: equivalência do livro (dois do mesmo ND = ND+2; um ND abaixo soma +1 etc.)
@@ -75,17 +76,37 @@
   };
   const LOJA_FIXOS = ['pocao', 'racao', 'barraca'];
   const LOJA_SORTEIO = ['pocaoMaior', 'oleo', 'protecao', 'granada', 'velocidade', 'corda', 'certeira', 'cruel', 'reforcada'];
+  // a partir do andar 2 a loja passa a ter itens mágicos (índice = andar em que entram)
+  const LOJA_POR_ANDAR = [[], [], ['certeiraCruel', 'sustento', 'luvas', 'manoplas', 'manto', 'torque'], ['anelProtecao', 'flamejante', 'congelante', 'eletrica', 'ameacadora', 'defensora', 'protetora'], ['vitalidade', 'robustez', 'cintoGigante', 'pulseiras'], []];
   const DROP_ELITE = ['sustento', 'luvas', 'manoplas', 'manto', 'torque', 'anelProtecao', 'certeiraCruel', 'flamejante', 'congelante', 'eletrica'];
   const DROP_CHEFE = ['vitalidade', 'robustez', 'cintoGigante', 'pulseiras', 'defensora', 'protetora', 'ameacadora', 'flamejante'];
   const DROP_COMUM = ['pocao', 'pocao', 'oleo', 'protecao', 'racao', 'pocaoMaior'];
 
-  /* ---------- inimigos do andar 1: estrada e ruínas ---------- */
+  /* ---------- inimigos: temas de cada andar (o andar 1 usa as criaturas do Livro Base; 2 a 5, as de js/bestiario.js) ---------- */
   const TEMAS = [
+    // andar 1 · Estrada de Deheon (níveis 1 a 4)
     { id: 'bandidos', nome: 'bandidos', mapas: ['estrada', 'clareira'], pool: ['capanga', 'saqueador', 'saqueadora', 'barbaroErmos', 'minotauro'] },
     { id: 'kobolds', nome: 'kobolds', mapas: ['estrada', 'clareira'], pool: ['kobold', 'koboldFunda', 'capanga'] },
     { id: 'feras', nome: 'feras', mapas: ['clareira', 'rio'], pool: ['lobo', 'urso', 'homemPiranha'] },
     { id: 'ruinas', nome: 'mortos das ruínas', mapas: ['cripta'], pool: ['zumbi', 'cultista', 'zumbiTurba'] },
     { id: 'puristas', nome: 'puristas', mapas: ['estrada', 'rio'], pool: ['soldadoPurista', 'capanga', 'sargentoPurista', 'arcanoGuerra'] },
+    // andar 2 · Florestas de Tollon (níveis 4 a 8)
+    { id: 'goblinoides', andar: 2, nome: 'goblinoides', mapas: ['estrada', 'clareira'], pool: ['hobgoblinAtirador', 'bugbear', 'gnollLider', 'gnollXama'] },
+    { id: 'ferasTollon', andar: 2, nome: 'feras da mata', mapas: ['clareira', 'rio'], pool: ['tigre', 'warg', 'manticora', 'rinoceronte'] },
+    { id: 'ogros', andar: 2, nome: 'ogros', mapas: ['clareira', 'estrada'], pool: ['ogroCacador', 'orcXama', 'rinoceronte', 'gnollLider'] },
+    // andar 3 · Montanhas Uivantes (níveis 8 a 12)
+    { id: 'gelo', andar: 3, nome: 'feras do gelo', mapas: ['clareira', 'rio'], pool: ['mamute', 'ursoCavernas', 'morteGlacial', 'warg'] },
+    { id: 'construtos', andar: 3, nome: 'construtos anões', mapas: ['cripta', 'estrada'], pool: ['golemBronze', 'golemFerro', 'dracomante'] },
+    { id: 'gigantes', andar: 3, nome: 'gigantes', mapas: ['clareira', 'estrada'], pool: ['keylor', 'tuntram', 'ogroCacador', 'gnollXama'] },
+    { id: 'serpes', andar: 3, nome: 'serpes', mapas: ['rio', 'clareira'], pool: ['dragaoJovem', 'dracomante', 'quimera', 'manticora'] },
+    // andar 4 · Aslothia (níveis 12 a 16)
+    { id: 'esqueletos', andar: 4, nome: 'ossadas antigas', mapas: ['cripta', 'clareira'], pool: ['reiTiranoEsqueleto', 'necrodracoEsqueleto', 'mortalha', 'golemFerro'] },
+    { id: 'fantasmas', andar: 4, nome: 'fantasmas', mapas: ['cripta', 'rio'], pool: ['fantasmaAncestral', 'mortalha', 'sacerdoteAgonia'] },
+    { id: 'colossos', andar: 4, nome: 'mortos colossais', mapas: ['clareira', 'estrada'], pool: ['lyuba', 'reiTiranoEsqueleto', 'sacerdoteAgonia', 'mortalha'] },
+    // andar 5 · Área de Tormenta (níveis 16 a 20)
+    { id: 'lefeu', andar: 5, nome: 'lefeu', mapas: ['estrada', 'cripta'], pool: ['akaOni', 'aspectoAharadak', 'reishidLider', 'arquibruxo'] },
+    { id: 'corrompidos', andar: 5, nome: 'corrompidos', mapas: ['rio', 'cripta'], pool: ['elementalCorrompido', 'rubro', 'reishidLider', 'aspectoAharadak'] },
+    { id: 'dragoesTormenta', andar: 5, nome: 'dragões da tempestade', mapas: ['clareira', 'rio'], pool: ['dragaoVeneravel', 'arquibruxo', 'aspectoAharadak', 'rubro'] },
   ];
   const NOMES_ENC = {
     bandidos: ['Emboscada na estrada', 'Pedágio dos saqueadores', 'Acampamento bandido', 'Assalto na ponte'],
@@ -93,24 +114,69 @@
     feras: ['Uivos na mata', 'Território das feras', 'Caçada no vau'],
     ruinas: ['Ruínas assombradas', 'A capela caída', 'Cemitério da estrada'],
     puristas: ['Patrulha purista', 'Posto de controle', 'Caçadores de hereges'],
+    goblinoides: ['Acampamento hobgoblin', 'Batedores da Aliança Negra', 'Matilha gnoll', 'Tambores na mata'],
+    ferasTollon: ['Covil na mata fechada', 'Trilha dos predadores', 'Olhos entre as árvores'],
+    ogros: ['Caverna do ogro', 'Ponte dos ogros', 'Fogueira dos brutos'],
+    gelo: ['Nevasca', 'Manada no desfiladeiro', 'Gelo que caça'],
+    construtos: ['Forja abandonada', 'Guardiões do salão anão', 'Portão de bronze'],
+    gigantes: ['Passo dos gigantes', 'Rochas que rolam', 'Acampamento nas alturas'],
+    serpes: ['Ninho nos penhascos', 'Asas sobre o vale', 'Caverna das serpes'],
+    esqueletos: ['Campo de ossos', 'Ossário real', 'A marcha dos esqueletos'],
+    fantasmas: ['Névoa que sussurra', 'O castelo vazio', 'Velório sem fim'],
+    colossos: ['Gigantes que não morrem', 'Cemitério dos titãs', 'Terra que treme'],
+    lefeu: ['Chuva rubra', 'Carne que se mexe', 'O céu sangra'],
+    corrompidos: ['Pântano corrompido', 'Pedras que gritam', 'Matéria vermelha'],
+    dragoesTormenta: ['Asas na tempestade', 'Raios rubros', 'O ninho do fim'],
   };
   const CHEFES = [
     { id: 'minotauro', nome: 'O Rei da Estrada', chefe: 'minotauro', escolta: ['capanga', 'saqueadora', 'saqueador'], mapa: 'clareira', texto: 'O minotauro que comanda os bandidos da região quer o seu ouro.' },
     { id: 'necromante', nome: 'A Capela Profanada', chefe: 'cultista', escolta: ['zumbi', 'zumbi', 'zumbiTurba'], mapa: 'cripta', texto: 'Um cultista ergue os mortos das ruínas para servi-lo.' },
     { id: 'barbaro', nome: 'O Senhor dos Ermos', chefe: 'barbaroErmos', escolta: ['lobo', 'lobo', 'saqueadora'], mapa: 'clareira', texto: 'Um bárbaro e sua matilha fizeram das ruínas o seu covil.' },
+    { id: 'quimera', andar: 2, nome: 'A Fera de Três Cabeças', chefe: 'quimera', escolta: ['manticora', 'tigre', 'tigre'], mapa: 'clareira', texto: 'Uma quimera caça tudo o que entra na floresta.' },
+    { id: 'orcRei', andar: 2, nome: 'O Rei dos Orcs', chefe: 'orcRei', escolta: ['orcXama', 'gnollLider', 'gnollLider'], mapa: 'estrada', texto: 'Um rei orc juntou as tribos da mata para marchar sobre Deheon.' },
+    { id: 'cacador', andar: 2, nome: 'O Caçador de Tollon', chefe: 'ogroCacador', escolta: ['warg', 'warg', 'hobgoblinAtirador'], mapa: 'clareira', texto: 'Um ogro caçador e seus wargs vigiam a saída da floresta.' },
+    { id: 'dragao', andar: 3, nome: 'O Dragão das Uivantes', chefe: 'dragaoAdulto', escolta: ['dracomante', 'dragaoJovem', 'dracomante'], mapa: 'rio', texto: 'Um dragão adulto e seus servos dracomantes guardam o passo.' },
+    { id: 'golemPedra', andar: 3, nome: 'O Salão dos Golens', chefe: 'golemPedra', escolta: ['dracomante', 'golemBronze', 'golemFerro'], mapa: 'cripta', texto: 'O guardião de pedra de uma fortaleza anã acorda.' },
+    { id: 'bruxa', andar: 3, nome: 'A Bruxa da Montanha', chefe: 'bruxaGoblin', escolta: ['keylor', 'morteGlacial', 'morteGlacial'], mapa: 'clareira', texto: 'Uma bruxa goblin manda nos gigantes das alturas.' },
+    { id: 'lich', andar: 4, nome: 'O Lich da Torre', chefe: 'lich', escolta: ['mortalha', 'sacerdoteAgonia', 'fantasmaAncestral'], mapa: 'cripta', texto: 'Um lich estuda a morte do alto de sua torre.' },
+    { id: 'mumias', andar: 4, nome: 'O Senhor das Múmias', chefe: 'senhorMumias', escolta: ['reiTiranoEsqueleto', 'sacerdoteAgonia', 'mortalha'], mapa: 'cripta', texto: 'O senhor das múmias quer o grupo no seu exército.' },
+    { id: 'necrodraco', andar: 4, nome: 'As Asas Podres', chefe: 'necrodracoZumbi', escolta: ['necrodracoEsqueleto', 'mortalha'], mapa: 'clareira', texto: 'Um necrodraco zumbi cobre o céu de Aslothia.' },
+    { id: 'necrodracoLich', andar: 5, nome: 'O Necrodraco Lich', chefe: 'necrodracoLich', escolta: ['arquibruxo', 'reishidLider'], mapa: 'cripta', texto: 'O mais antigo dos mortos fez da tempestade rubra o seu trono. É a última luta.' },
+    { id: 'rubro', andar: 5, nome: 'Rubro, Forma Final', chefe: 'rubro', escolta: ['arquibruxo', 'akaOni', 'akaOni'], mapa: 'rio', texto: 'O coração da Área de Tormenta tomou forma. É a última luta.' },
+    { id: 'veneravel', andar: 5, nome: 'O Dragão Venerável', chefe: 'dragaoVeneravel', escolta: ['aspectoAharadak', 'arquibruxo', 'reishidLider'], mapa: 'clareira', texto: 'Um dragão antigo, tocado pela Tormenta, guarda o fim do caminho. É a última luta.' },
   ];
+  // os 5 andares: cada um sobe cerca de 4 níveis e termina num chefe (o do andar 5 é o chefe final, no nível 20)
+  const ANDARES = [null,
+    { nome: 'Estrada de Deheon', inicio: 'Ruínas de Tyrondir', teto: 4, loja: 'Mercadora de estrada' },
+    { nome: 'Florestas de Tollon', inicio: 'Orla da floresta', teto: 8, loja: 'Mascate élfico' },
+    { nome: 'Montanhas Uivantes', inicio: 'Pé da montanha', teto: 12, loja: 'Entreposto anão' },
+    { nome: 'Aslothia', inicio: 'Fronteira dos mortos', teto: 16, loja: 'Contrabandista' },
+    { nome: 'Área de Tormenta', inicio: 'Borda da tempestade', teto: 20, loja: 'Último mercador' },
+  ];
+  const ULTIMO_ANDAR = ANDARES.length - 1;
+  const andarDe = x => x.andar || 1;
+  const tetoDe = run => ANDARES[run.andar || 1].teto;
 
+  // dos andares 2 em diante, a conta do livro (dois do mesmo ND = ND+2) erra com os heróis do jogo: um monstro sozinho
+  // é fácil e três já são muito. O peso corrige isso só na hora de montar o grupo (o ND mostrado continua o do livro).
+  const PESO_QTD = [0, -2, 0, 3, 5, 6.5];
+  const ndPesado = (ids, nd) => nd + PESO_QTD[Math.min(5, ids.length)];
   function gerarGrupo(o, alvo, tema, min, max) {
-    let melhor = null;
+    let melhor = null; const pesa = (tema.andar || 1) >= 2; const bons = [];
     for (let k = 0; k < 160; k++) {
       const n = min + Math.floor(rnd(o) * (max - min + 1)); const ids = [];
       for (let i = 0; i < n; i++) ids.push(escolher(o, tema.pool));
-      const nd = ndEncontro(ids); const err = Math.abs(nd - alvo) + (nd > alvo ? 0.15 : 0);
+      // dos andares 2 em diante: no máximo um conjurador por grupo (dois lançando bola de fogo toda rodada é demais)
+      if (pesa && ids.filter(id => (D.CRIATURAS[id].magias || []).length).length > 1) continue;
+      const nd = ndEncontro(ids); const ef = pesa ? ndPesado(ids, nd) : nd; const err = Math.abs(ef - alvo) + (ef > alvo ? 0.15 : 0);
       if (!melhor || err < melhor.err) melhor = { ids, nd, err };
-      if (err < 0.1) break;
+      if (pesa) { if (err < 0.6) bons.push({ ids, nd, err }); if (bons.length >= 6) break; }
+      else if (err < 0.1) break;
     }
-    melhor.ids.sort((a, b) => D.CRIATURAS[b].nd - D.CRIATURAS[a].nd);
-    return melhor;
+    // andares 2+: sorteia entre os grupos que servem (dá variedade); andar 1 fica como era
+    const g = pesa && bons.length ? bons[Math.floor(rnd(o) * bons.length)] : melhor;
+    g.ids.sort((a, b) => D.CRIATURAS[b].nd - D.CRIATURAS[a].nd);
+    return g;
   }
 
   /* ---------- mapa do andar ---------- */
@@ -174,6 +240,8 @@
       nivelInicial: cfg.nivel || 1,
     };
     if (run.nivelInicial > 1) { run.xp = XP_NIVEL[run.nivelInicial]; run.nivel = run.nivelInicial; }
+    // começar num andar mais fundo (simulador e testes): o grupo chega no nível do teto do andar anterior
+    if (cfg.andar > 1) { run.andar = Math.min(ULTIMO_ANDAR, cfg.andar); run.nivel = ANDARES[run.andar - 1].teto; run.xp = XP_NIVEL[run.nivel]; run.nivelInicial = run.nivel; }
     for (const it of cfg.itens || []) darItem(run, it);
     run.mapa = gerarMapa(run.sorte);
     for (const n of run.mapa.nos) prepararNo(run, n);
@@ -181,19 +249,20 @@
   }
   const vivos = run => run.herois.filter(h => !h.morto);
   const noAtual = run => run.mapa.nos[run.atual];
-  function proximos(run) { if (run.fim || run.pendente) return []; return noAtual(run).liga.map(i => run.mapa.nos[i]); }
+  function proximos(run) { if (run.fim || run.pendente || run.proxAndar) return []; return noAtual(run).liga.map(i => run.mapa.nos[i]); }
 
   // conteúdo fixo de cada nó (sorteado ao criar o mapa, para o jogador poder planejar)
   function prepararNo(run, n) {
     const o = run.sorte;
     if (n.tipo === 'batalha' || n.tipo === 'elite') {
-      const tema = n.c <= 2 ? escolher(o, TEMAS.filter(t => t.id !== 'puristas' && t.id !== 'ruinas')) : escolher(o, TEMAS);
+      const doAndar = TEMAS.filter(t => andarDe(t) === (run.andar || 1));
+      const tema = run.andar === 1 && n.c <= 2 ? escolher(o, doAndar.filter(t => t.id !== 'puristas' && t.id !== 'ruinas')) : escolher(o, doAndar);
       n.tema = tema.id; n.mapaId = escolher(o, tema.mapas); n.nome = escolher(o, NOMES_ENC[tema.id]);
       if (n.tipo === 'elite') n.nome = 'Elite: ' + n.nome;
     }
-    if (n.tipo === 'chefe') { const C = escolher(o, CHEFES); n.chefeId = C.id; n.nome = C.nome; n.texto = C.texto; n.mapaId = C.mapa; }
+    if (n.tipo === 'chefe') { const C = escolher(o, CHEFES.filter(c => andarDe(c) === (run.andar || 1))); n.chefeId = C.id; n.nome = C.nome; n.texto = C.texto; n.mapaId = C.mapa; }
     if (n.tipo === 'evento') n.evento = escolher(o, Object.keys(EVENTOS));
-    if (n.tipo === 'loja') n.nome = 'Mercadora de estrada';
+    if (n.tipo === 'loja') n.nome = ANDARES[run.andar || 1].loja;
     if (n.tipo === 'descanso') n.nome = n.c === COLS - 1 ? 'Fogueira antes do chefe' : 'Fogueira';
   }
   // nível esperado do grupo em cada coluna (o grupo sai do 1º e chega ao 4º no chefe)
@@ -206,18 +275,20 @@
   }
   function inimigosDoNo(run, n) {
     if (n.grupo && n.grupoNivel === run.nivel) return n.grupo;
-    const o = { seed: run.seed ^ (n.id * 2654435761) ^ (run.nivel * 97) };
+    const o = { seed: run.seed ^ (n.id * 2654435761) ^ (run.nivel * 97) ^ ((run.andar || 1) * 7777) };
     let g;
     if (n.tipo === 'chefe') {
       const C = CHEFES.find(c => c.id === n.chefeId);
       // Chefe Final: PV dobrados contam como +2 de ND; a escolta cresce com o nível do grupo
-      const alvo = run.nivel + 1.5; let escolta = [];
-      for (let k = 0; k <= C.escolta.length; k++) { const e = C.escolta.slice(0, k); if (k === 0 || ndEncontro([C.chefe, C.chefe, ...e]) <= alvo + 0.25) escolta = e; }
+      const alvo = run.nivel + ((C.andar || 1) >= 2 ? 4 : 1.5); let escolta = [];
+      const ef = e => { const nd = ndEncontro([C.chefe, C.chefe, ...e]); return (C.andar || 1) >= 2 ? ndPesado([C.chefe, ...e], nd) : nd; };
+      for (let k = 0; k <= C.escolta.length; k++) { const e = C.escolta.slice(0, k); if (k === 0 || ef(e) <= alvo + 0.25) escolta = e; }
       g = { ids: [C.chefe, ...escolta], chefe: C.chefe };
       g.nd = ndEncontro([C.chefe, C.chefe, ...escolta]);
     } else {
       const tema = TEMAS.find(t => t.id === n.tema); const alvo = alvoND(run, n);
-      g = gerarGrupo(o, alvo, tema, n.tipo === 'elite' ? 2 : 2, n.tipo === 'elite' ? 4 : 5);
+      const andar2 = (tema.andar || 1) >= 2;
+      g = gerarGrupo(o, alvo, tema, andar2 ? 1 : 2, andar2 ? 4 : n.tipo === 'elite' ? 4 : 5);
     }
     n.grupo = g; n.grupoNivel = run.nivel; return g;
   }
@@ -247,7 +318,7 @@
   function prepararBatalha(run, n) {
     n = n || noAtual(run);
     const g = inimigosDoNo(run, n); const grupo = vivos(run);
-    const cfg = { herois: grupo.map(h => h.hid), nivel: run.nivel, inimigos: g.ids, mapa: n.mapaId, seed: (run.seed ^ (n.id * 7919) ^ (run.stats.batalhas * 104729)) >>> 0, run: true };
+    const cfg = { herois: grupo.map(h => h.hid), nivel: run.nivel, inimigos: g.ids, mapa: n.mapaId, seed: (run.seed ^ (n.id * 7919) ^ (run.stats.batalhas * 104729) ^ ((run.andar || 1) * 31337)) >>> 0, run: true };
     return { cfg, grupo, chefe: g.chefe || null, nd: g.nd };
   }
   // chamado logo depois de R.novaBatalha: ajusta heróis e o chefe
@@ -283,17 +354,28 @@
     // XP: ND × 1.000 dividido pelo tamanho do grupo (heróis que começaram a run)
     const ndXp = n.tipo === 'chefe' ? prep.nd + 0 : prep.nd;
     res.xp = Math.round(ndXp * 1000 * XP_MULT / run.herois.length);
-    const antes = run.nivel; run.xp += res.xp; run.stats.xp += res.xp; run.nivel = Math.min(20, nivelDoXP(run.xp));
+    // o nível para no teto do andar (4, 8, 12, 16, 20); o XP que passa do teto não conta (o que fazer depois do 20 fica para depois)
+    const antes = run.nivel; const teto = tetoDe(run); run.stats.xp += res.xp;
+    run.xp = run.andar < ULTIMO_ANDAR ? Math.min(run.xp + res.xp, XP_NIVEL[teto]) : run.xp + res.xp;
+    // vencer o chefe garante o teto: o grupo começa o próximo andar no nível certo
+    if (n.tipo === 'chefe' && run.xp < XP_NIVEL[teto]) run.xp = XP_NIVEL[teto];
+    run.nivel = Math.min(teto, nivelDoXP(run.xp));
     if (run.nivel > antes) res.subiu = { de: antes, para: run.nivel };
     // tesouro: proporcional ao ND (aprox. da tabela de tesouro do livro, mais baixa no andar 1)
     const o = run.sorte;
-    res.ouro = Math.round((20 + 35 * Math.max(0.5, prep.nd)) * (0.7 + rnd(o) * 0.6) * (n.tipo === 'elite' ? 1.6 : n.tipo === 'chefe' ? 2.5 : 1));
+    // acima do ND 4 o tesouro cresce mais rápido (como a tabela do livro), para os itens mágicos da loja caberem no bolso
+    const escala = 1 + Math.pow(Math.max(0, prep.nd - 4), 2) / 30;
+    res.ouro = Math.round((20 + 35 * Math.max(0.5, prep.nd)) * escala * (0.7 + rnd(o) * 0.6) * (n.tipo === 'elite' ? 1.6 : n.tipo === 'chefe' ? 2.5 : 1));
     run.ouro += res.ouro; run.stats.ouroGanho += res.ouro;
     if (n.tipo === 'elite') { res.itens.push(escolher(o, DROP_ELITE)); run.stats.elites++; }
     else if (n.tipo === 'chefe') res.itens.push(escolher(o, DROP_CHEFE));
     else if (rnd(o) < 0.4) res.itens.push(escolher(o, DROP_COMUM));
     for (const it of res.itens) darItem(run, it);
-    if (n.tipo === 'chefe') { run.fim = 'vitoria'; run.log.push('🏆 O chefe do andar caiu!'); }
+    if (n.tipo === 'chefe') {
+      run.andaresVencidos = (run.andaresVencidos || 0) + 1;
+      if (run.andar >= ULTIMO_ANDAR) { run.fim = 'vitoria'; run.log.push('🏆 O chefe final caiu! Arton está salva.'); }
+      else { run.proxAndar = true; res.andarLimpo = run.andar; run.log.push(`🏆 O chefe do andar ${run.andar} caiu!`); }
+    }
     run.log.push(`⚔ ${n.nome}: vitória (+${res.xp} XP, +T$ ${res.ouro}${res.itens.length ? ', ' + res.itens.map(i => ITENS[i].nome).join(', ') : ''}).`);
     return res;
   }
@@ -324,9 +406,11 @@
   /* ---------- loja ---------- */
   function estoqueLoja(run, n) {
     if (n.estoque) return n.estoque;
-    const o = { seed: run.seed ^ (n.id * 40503) };
-    const sorteio = embaralhar(o, LOJA_SORTEIO).slice(0, 5);
-    n.estoque = [...LOJA_FIXOS.map(id => ({ id, fixo: true })), ...sorteio.map(id => ({ id, fixo: false, vendido: false }))];
+    const o = { seed: run.seed ^ (n.id * 40503) ^ ((run.andar || 1) * 8191) };
+    const a = run.andar || 1;
+    const pool = LOJA_SORTEIO.concat(...LOJA_POR_ANDAR.slice(2, a + 1)); const fixos = a >= 3 ? ['pocaoMaior', 'racao', 'barraca'] : LOJA_FIXOS;
+    const sorteio = embaralhar(o, pool.filter(id => !fixos.includes(id))).slice(0, a >= 2 ? 6 : 5);
+    n.estoque = [...fixos.map(id => ({ id, fixo: true })), ...sorteio.map(id => ({ id, fixo: false, vendido: false }))];
     return n.estoque;
   }
   function comprar(run, n, k, hi) {
@@ -485,6 +569,24 @@
     return null;
   }
   function sairDoNo(run) { run.pendente = null; }
+  // depois do chefe: o grupo descansa (PV e PM cheios, mortos continuam mortos) e entra no próximo andar, com mapa novo
+  // entre um andar e outro o grupo passa por uma cidade: o templo de lá revive os caídos (pago com o ouro da run)
+  const custoReviverAndar = run => 100 * run.nivel;
+  function reviverNaCidade(run, hi) {
+    const h = run.herois[hi]; if (!run.proxAndar || !h || !h.morto) return 'Nada a fazer.';
+    const c = custoReviverAndar(run); if (run.ouro < c) return 'Ouro insuficiente.';
+    run.ouro -= c; h.morto = false; h.dano = 0; h.pmGasto = 0; run.log.push(`⛪ ${(D.HEROIS.find(x => x.id === h.hid) || {}).nome} volta à vida no templo (T$ ${c}).`);
+    return null;
+  }
+  function proximoAndar(run) {
+    if (!run.proxAndar || run.andar >= ULTIMO_ANDAR) return 'Ainda não.';
+    run.andar++; run.proxAndar = false; run.pendente = null;
+    for (const h of vivos(run)) { h.dano = 0; h.pmGasto = 0; }
+    run.mapa = gerarMapa(run.sorte); run.atual = 0; run.caminho = [0];
+    for (const n of run.mapa.nos) prepararNo(run, n);
+    run.log.push(`🗺 Andar ${run.andar}: ${ANDARES[run.andar].nome}.`);
+    return null;
+  }
 
   /* ---------- progresso permanente ---------- */
   const MARCOS = [
@@ -517,27 +619,32 @@
   }
   // fim de run: soma pontuação (XP histórico), guarda itens e ouro se venceu
   function encerrarRun(run, meta, desistiu) {
-    const venceu = run.fim === 'vitoria'; const antes = meta.pontos;
-    const pts = run.stats.xp + (venceu ? 2000 : 0); // XP que cada herói ganhou na run + bônus por vencer o andar
+    const venceu = run.fim === 'vitoria'; const antes = meta.pontos; const andares = run.andaresVencidos || 0;
+    const pts = run.stats.xp + 2000 * andares + (venceu ? 10000 : 0); // XP que cada herói ganhou + bônus por andar limpo e pela vitória final
     meta.pontos += pts; meta.runs++; if (venceu) meta.vitorias++;
     for (const h of run.herois) { const c = D.HEROIS.find(x => x.id === h.hid).classe; meta.porClasse[c] = (meta.porClasse[c] || 0) + run.stats.xp; }
     const fica = [];
-    if (venceu) {
+    meta.melhorAndar = Math.max(meta.melhorAndar || 0, run.andar || 1);
+    const traz = venceu || andares >= 1; // quem limpou ao menos um andar traz equipamento e mochila para o baú
+    if (traz) {
       for (const h of run.herois) { for (const s of ['arma', 'armadura', 'acessorio']) if (h.equip[s]) fica.push(h.equip[s]); }
       for (const it of run.mochila) if (ITENS[it].slot !== 'cinto') fica.push(it);
-      meta.bau.push(...fica); meta.ouro += run.ouro;
+      meta.bau.push(...fica);
     }
-    const guardado = !venceu && tem(meta, 'banco') ? Math.floor(run.ouro / 4) : 0; meta.ouro += guardado;
+    if (venceu) meta.ouro += run.ouro;
+    // sem a vitória final: o Banco guarda 25% e cada andar limpo guarda mais 20% (até 80%)
+    const parte = Math.min(0.8, (tem(meta, 'banco') ? 0.25 : 0) + 0.2 * andares);
+    const guardado = !venceu ? Math.floor(run.ouro * parte) : 0; meta.ouro += guardado;
     const novos = MARCOS.filter(m => antes < m.pts && meta.pontos >= m.pts);
-    const resumo = { venceu, desistiu: !!desistiu, pts, total: meta.pontos, fica, ouro: venceu ? run.ouro : guardado, guardado, novos, nivel: run.nivel, stats: { ...run.stats } };
+    const resumo = { venceu, desistiu: !!desistiu, andar: run.andar || 1, andares, pts, total: meta.pontos, fica, ouro: venceu ? run.ouro : guardado, guardado, novos, nivel: run.nivel, stats: { ...run.stats } };
     meta.melhor = Math.max(meta.melhor, pts);
-    meta.historico.unshift({ data: Date.now(), venceu, pts, nivel: run.nivel, herois: run.herois.map(h => h.hid) }); meta.historico = meta.historico.slice(0, 20);
+    meta.historico.unshift({ data: Date.now(), venceu, pts, nivel: run.nivel, andar: run.andar || 1, herois: run.herois.map(h => h.hid) }); meta.historico = meta.historico.slice(0, 20);
     return resumo;
   }
   function vendaGuilda(meta, idx) { const id = meta.bau[idx]; if (!id) return 'Nada aí.'; const v = Math.floor(ITENS[id].preco / 2); meta.bau.splice(idx, 1); meta.ouro += v; return null; }
 
   const API = {
-    ITENS, EVENTOS, TEMAS, CHEFES, MARCOS, XP_NIVEL, PERICIAS, MAX_CINTO, LOJA_FIXOS,
+    ITENS, EVENTOS, TEMAS, CHEFES, ANDARES, ULTIMO_ANDAR, proximoAndar, reviverNaCidade, custoReviverAndar, MARCOS, XP_NIVEL, PERICIAS, MAX_CINTO, LOJA_FIXOS,
     novaRun, gerarMapa, proximos, noAtual, avancar, sairDoNo, vivos, inimigosDoNo, ndEncontro, ndTxt, nivelDoXP,
     prepararBatalha, ajustarBatalha, concluirBatalha, unidadeHeroi, pvMaxDe, pmMaxDe,
     darItem, equipar, desequipar, estoqueLoja, comprar, vender, precoVenda,

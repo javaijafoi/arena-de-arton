@@ -5,7 +5,7 @@ Simulador de combate tático por turnos de **Tormenta 20**, direto no navegador.
 **▶ Jogar:** https://arena-de-arton.vercel.app · **🌴 Portfólio:** https://javaijafoi.vercel.app
 
 ## O que tem
-- **Modo roguelike:** escolha o caminho num mapa de andar, enfrente batalhas e um chefe; ferimentos, poções e ouro passam de uma luta para a outra; a pontuação fica entre runs e libera coisas novas (progresso salvo no navegador e, opcionalmente, na nuvem com um código por aparelho; `js/nuvem.js` usa só a chave publicável do Supabase e chama as funções `arena_salvar`/`arena_carregar`)
+- **Modo roguelike:** 5 andares até o nível 20 (1→4, 4→8, 8→12, 12→16, 16→20), cada um com mapa, batalhas e um chefe, e o chefe final no andar 5; entre andares uma cidade cura o grupo e revive os caídos por ouro. Os monstros dos andares 2 a 5 têm nomes de Ameaças de Arton e números ajustados ao poder dos heróis do jogo (`js/bestiario.js`); ferimentos, poções e ouro passam de uma luta para a outra; a pontuação fica entre runs e libera coisas novas (progresso salvo no navegador e, opcionalmente, na nuvem com um código por aparelho; `js/nuvem.js` usa só a chave publicável do Supabase e chama as funções `arena_salvar`/`arena_carregar`)
 - Grade 16×12 (1,5 m por quadrado), visão de cima, movimento e alcance destacados
 - 9 heróis e magias até o 4º círculo
 - Escada de 10 encontros (níveis 1 a 14), inimigos controlados por IA (ou você controla os dois lados)
@@ -20,7 +20,9 @@ Abra `index.html` (ou sirva a pasta com qualquer servidor estático). Testes sem
 node test/sim.js 30       # IA x IA na escada de encontros
 node test/magias.js       # lança todas as magias
 node test/mecanicas.js    # voo, cegueira, manobras
-node test/run-sim.js      # simulação do modo roguelike
+node test/run-sim.js 100            # simulação do modo roguelike (até onde o grupo chega em cada andar)
+node test/run-sim.js 40 '' --andar 3 # começa direto no andar 3
+node test/calibra.js                # lutas isoladas e chefes de cada andar
 ```
 
 ## Sobre imagens e licença

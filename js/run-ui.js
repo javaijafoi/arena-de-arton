@@ -65,11 +65,11 @@
         <div class="ti-chao"></div>
       </div>
       <div class="win ti-menu">
-        ${andando ? `<button class="btn gold bbig" id="tiCont">▶ Continuar run <small>nível ${S.run.nivel} · andar ${S.run.andar}</small></button><button class="btn bbig" id="tiNova">⚔ Nova run</button>` : '<button class="btn gold bbig" id="tiNova">⚔ Nova run <small>Andar 1: Estrada e Ruínas</small></button>'}
+        ${andando ? `<button class="btn gold bbig" id="tiCont">▶ Continuar run <small>nível ${S.run.nivel} · andar ${S.run.andar}</small></button><button class="btn bbig" id="tiNova">⚔ Nova run</button>` : '<button class="btn gold bbig" id="tiNova">⚔ Nova run <small>5 andares até o nível 20</small></button>'}
         ${gu ? '<button class="btn bbig" id="tiGuilda">🏛 Guilda</button>' : `<button class="btn bbig" disabled>🔒 Guilda <small>libera com ${RUN.MARCOS[0].pts.toLocaleString('pt-BR')} pontos</small></button>`}
         <button class="btn bbig" id="tiTreino">🎯 Treino <small>escada antiga e batalha livre</small></button>
         <button class="btn bbig" id="tiOpc">⚙ Opções</button>
-        <div class="ti-st"><span>🏅 <b>${m.pontos.toLocaleString('pt-BR')}</b> pontos</span><span>🎲 <b>${m.runs}</b> runs · <b>${m.vitorias}</b> vitórias</span>${prox ? `<span>Próximo: <b>${esc(prox.nome)}</b> em ${prox.pts.toLocaleString('pt-BR')}</span>` : ''}</div>
+        <div class="ti-st"><span>🏅 <b>${m.pontos.toLocaleString('pt-BR')}</b> pontos</span><span>🎲 <b>${m.runs}</b> runs · <b>${m.vitorias}</b> vitórias${m.melhorAndar > 1 ? ` · melhor: andar <b>${m.melhorAndar}</b>` : ''}</span>${prox ? `<span>Próximo: <b>${esc(prox.nome)}</b> em ${prox.pts.toLocaleString('pt-BR')}</span>` : ''}</div>
         ${nuvemTxt()}
       </div>
     </div>`;
@@ -168,7 +168,7 @@
       h += `<div class="buyrow"><span class="ic">${ic}</span><span class="nm">${nome}<small>${esc(I(k).desc)}</small></span><span class="pr">T$ ${PRECOS[k]}</span><button class="btn sm" data-menos="${k}" ${P.compras[k] ? '' : 'disabled'}>−</button><b class="q">${P.compras[k]}</b><button class="btn sm" data-mais="${k}" ${resta >= PRECOS[k] && !(k === 'barraca' && P.compras[k]) ? '' : 'disabled'}>+</button></div>`;
     }
     h += '</div>';
-    if (RUN.liberado(m, 'guilda')) h += `<div class="win"><h3>Baú da guilda</h3>${m.bau.length ? '<p class="mut">Leve até 2 itens trazidos de runs vencidas.</p><div class="bau">' + m.bau.map((id, k) => `<button class="itm${P.bau.includes(k) ? ' on' : ''}" data-bau="${k}"><span>${I(id).ic}</span>${esc(I(id).nome)}</button>`).join('') + '</div>' : '<p class="mut">Vazio. Vença o andar para trazer itens de volta.</p>'}</div>`;
+    if (RUN.liberado(m, 'guilda')) h += `<div class="win"><h3>Baú da guilda</h3>${m.bau.length ? '<p class="mut">Leve até 2 itens trazidos de runs anteriores.</p><div class="bau">' + m.bau.map((id, k) => `<button class="itm${P.bau.includes(k) ? ' on' : ''}" data-bau="${k}"><span>${I(id).ic}</span>${esc(I(id).nome)}</button>`).join('') + '</div>' : '<p class="mut">Vazio. Limpe um andar para trazer itens de volta.</p>'}</div>`;
     else h += '<div class="win"><h3>Baú da guilda</h3><p class="mut">🔒 Abre com a guilda, em 1.500 pontos.</p></div>';
     h += `<div class="pg-ir"><button class="btn gold" id="pIr" ${P.grupo.length ? '' : 'disabled'}>⚔ Começar a run</button></div></div></div>`;
     mostrar(h, 'pre'); ligarBarra();
@@ -219,12 +219,13 @@
   }
   function rostoDoNo(run, n) {
     if (!['batalha', 'elite', 'chefe'].includes(n.tipo)) return null;
-    const g = RUN.inimigosDoNo(run, n); const id = g.chefe || g.ids[0]; return id ? D.CRIATURAS[id].token : null;
+    const g = RUN.inimigosDoNo(run, n); const id = g.chefe || g.ids[0]; const NOV = (window.T20BESTIARIO || {}).NOVAS || {}; return id && !NOV[id] ? D.CRIATURAS[id].token : null; // monstros sem retrato ainda: o nó mostra o ícone do tipo
   }
   function telaMapa() {
     const run = S.run; if (!run) return voltarAoMenu();
     if (run.fim) return telaFim();
     if (run.pendente) return abrirPendente();
+    if (run.proxAndar) return telaCidade();
     const prox = RUN.proximos(run); const ids = new Set(prox.map(n => n.id)); const cam = new Set(run.caminho);
     if (S.sel != null && !ids.has(S.sel)) S.sel = null;
     const retrato = window.matchMedia('(max-width:860px)').matches;
@@ -233,7 +234,8 @@
     const origem = S.sel != null ? S.sel : run.atual; const alc = new Set([origem]);
     for (const n of run.mapa.nos.slice().sort((a, b) => a.c - b.c)) if (alc.has(n.id)) for (const j of n.liga) alc.add(j);
     const xp0 = RUN.XP_NIVEL[run.nivel], xp1 = RUN.XP_NIVEL[run.nivel + 1] || xp0 + 1;
-    let h = barra('Andar 1 · Deheon', `<span class="gold">T$ ${run.ouro}</span><span title="Rações">🍖 ${run.bolsa.racao}</span><span title="Mochila">🎒 ${run.mochila.length}</span>`);
+    const AND = RUN.ANDARES[run.andar || 1];
+    let h = barra(`Andar ${run.andar || 1} · ${esc(AND.nome)}`, `<span class="gold">T$ ${run.ouro}</span><span title="Rações">🍖 ${run.bolsa.racao}</span><span title="Mochila">🎒 ${run.mochila.length}</span>`);
     h += '<div class="pmapa"><div class="pm-herois">';
     run.herois.forEach((x, hi) => {
       const he = H(x.hid); const pvM = RUN.pvMaxDe(x, run.nivel), pmM = RUN.pmMaxDe(x, run.nivel); const pv = pvM - x.dano, pm = pmM - x.pmGasto;
@@ -260,23 +262,23 @@
       const tipo = n.tipo === 'evento' && n.visitado ? 'evento' : n.tipo;
       const rosto = (ids.has(n.id) || n.tipo === 'chefe' || cam.has(n.id)) ? rostoDoNo(run, n) : null;
       const dentro = rosto ? face(rosto) : pxi(tipo);
-      const rot = n.tipo === 'chefe' ? esc(n.nome || 'Chefe') : (ids.has(n.id) || n.id === S.sel) ? esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo]) : n.tipo === 'inicio' ? 'Ruínas de Tyrondir' : '';
+      const rot = n.tipo === 'chefe' ? esc(n.nome || 'Chefe') : (ids.has(n.id) || n.id === S.sel) ? esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo]) : n.tipo === 'inicio' ? esc(RUN.ANDARES[run.andar || 1].inicio) : '';
       nos += `<div class="nd ${st}${n.tipo === 'chefe' ? ' chefe' : ''}${S.sel === n.id ? ' sel' : ''}" style="left:${p.x}%;top:${p.y}%"><button class="f" data-no="${n.id}" style="--c:${COR_NO[tipo] || '#555'}" aria-label="${esc(NOME_TIPO[tipo] || tipo)}">${dentro}</button>${rot ? `<span class="l">${rot}</span>` : ''}</div>`;
     }
     const pa = posNo(run.mapa.nos[run.atual], retrato);
     nos += `<div class="pm-voce" style="left:${pa.x}%;top:${pa.y}%" title="Vocês estão aqui"><span></span></div>`;
-    h += `<div class="pm-win" id="pmWin"><div class="pm-in" style="${img ? `background-image:url('${img}');` : 'background:#5a7a3a;'}aspect-ratio:${retrato ? '200 / 353' : '380 / 279'}"><div class="win pm-chap"><small>ANDAR 1</small><b>ESTRADA E RUÍNAS</b></div>${svg}${nos}</div></div>`;
+    h += `<div class="pm-win" id="pmWin"><div class="pm-in" style="${img ? `background-image:url('${img}');` : 'background:#5a7a3a;'}aspect-ratio:${retrato ? '200 / 353' : '380 / 279'}"><div class="win pm-chap"><small>ANDAR ${run.andar || 1} DE ${RUN.ULTIMO_ANDAR}</small><b>${esc(AND.nome.toUpperCase())}</b></div>${svg}${nos}</div></div>`;
     // painel do nó
     const sel = S.sel != null ? run.mapa.nos[S.sel] : null;
     let pn = '<div class="scroll pm-info">';
     if (prox.length) pn += `<div class="pm-prox"><small class="tag" style="color:#7a5a1a">PARA ONDE?</small>${prox.map(n => { const t = n.tipo === 'evento' && n.visitado ? 'evento' : n.tipo; return `<button class="pp${S.sel === n.id ? ' on' : ''}" data-no="${n.id}" style="--c:${COR_NO[t] || '#555'}"><i>${pxi(t)}</i><span>${esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo])}</span></button>`; }).join('')}</div>`;
     if (sel) {
       if (['batalha', 'elite', 'chefe'].includes(sel.tipo)) {
-        const g = RUN.inimigosDoNo(run, sel); const tema = RUN.TEMAS.find(t => t.id === sel.tema); const rosto = rostoDoNo(run, sel);
+        const g = RUN.inimigosDoNo(run, sel); const tema = RUN.TEMAS.find(t => t.id === sel.tema); const rosto = D.CRIATURAS[g.chefe || g.ids[0]].token;
         pn += `${face(rosto, 'big')}<div><small class="tag" style="color:#7a5a1a">${NOME_TIPO[sel.tipo]}${tema ? ' · ' + esc(tema.nome) : ''}</small><h3>${esc(sel.nome)}</h3></div>${sel.texto ? `<q>${esc(sel.texto)}</q>` : ''}
-          <div class="foes">${g.ids.map(id => { const c = D.CRIATURAS[id]; return face(c.token, id === g.chefe ? 'boss' : '', '').replace('<span', `<span title="${esc(c.nome)} (ND ${c.ndTxt})"`); }).join('')}</div><div>${g.ids.length} inimigos · ND <b>${RUN.ndTxt(g.nd)}</b></div>`;
+          <div class="foes">${g.ids.map(id => { const c = D.CRIATURAS[id]; return face(c.token, id === g.chefe ? 'boss' : '', '').replace('<span', `<span title="${esc(c.nome)} (ND ${c.ndTxt})"`); }).join('')}</div><div>${g.ids.length} ${g.ids.length === 1 ? 'inimigo' : 'inimigos'} · ND <b>${RUN.ndTxt(g.nd)}</b></div>`;
         if (sel.tipo === 'elite') pn += '<p class="mut">Mais forte, mas sempre deixa um item mágico.</p>';
-        if (sel.tipo === 'chefe') pn += '<p class="mut">Chefe Final: PV dobrados e redução de dano 5. Vencer encerra a run com vitória.</p>';
+        if (sel.tipo === 'chefe') pn += `<p class="mut">${run.andar >= RUN.ULTIMO_ANDAR ? 'Chefe final: PV dobrados e redução de dano 5. Vencer encerra a run com vitória.' : `Chefe do andar: PV dobrados e redução de dano 5. Vencer leva o grupo ao nível ${RUN.ANDARES[run.andar].teto} e ao andar ${run.andar + 1}: ${esc(RUN.ANDARES[run.andar + 1].nome)}.`}</p>`;
       } else {
         const ic = pxi(sel.tipo);
         const txt = sel.tipo === 'evento' ? ['Algo na estrada…', 'Pode ser uma taverna, um altar, um tesouro com armadilha, alguém precisando de ajuda ou uma emboscada. Os testes usam a melhor perícia do grupo.']
@@ -345,9 +347,25 @@
       h += `<div class="loot"><span>⭐ +${res.xp} XP</span><span>💰 +T$ ${res.ouro}</span>${res.itens.map(i => `<span class="item">${I(i).ic} ${esc(I(i).nome)}</span>`).join('')}</div>`;
       if (res.subiu) h += `<div class="news">⬆ <b>O grupo sobe para o nível ${res.subiu.para}!</b><br>${novidades(res.subiu.de, res.subiu.para)}</div>`;
     }
-    h += `<div class="row" style="justify-content:center"><button class="btn gold bbig" id="rSeg">${run.fim ? 'Ver o fim da run' : 'Voltar ao mapa'}</button></div></div>`;
+    if (res.andarLimpo) h += `<div class="news">🏆 <b>Andar ${res.andarLimpo} limpo!</b><br>O grupo chega a uma cidade antes do andar ${res.andarLimpo + 1}: ${esc(RUN.ANDARES[res.andarLimpo + 1].nome)}.</div>`;
+    h += `<div class="row" style="justify-content:center"><button class="btn gold bbig" id="rSeg">${run.fim ? 'Ver o fim da run' : run.proxAndar ? 'Seguir para a cidade ▶' : 'Voltar ao mapa'}</button></div></div>`;
     mostrar(cabecalho('Resultado') + h, 'res'); ligarCabecalho(telaResultado);
-    $('rSeg').onclick = () => { clique(); S.res = null; delete run.ultimoRes; run.pendente = null; salvar(); if (run.fim) telaFim(); else telaMapa(); };
+    $('rSeg').onclick = () => { clique(); S.res = null; delete run.ultimoRes; run.pendente = null; salvar(); if (run.fim) telaFim(); else if (run.proxAndar) telaCidade(); else telaMapa(); };
+  }
+  /* ---------- cidade entre andares: descanso completo, templo para os caídos e o próximo andar ---------- */
+  function telaCidade() {
+    const run = S.run; if (!run.proxAndar) return telaMapa();
+    const prox = RUN.ANDARES[run.andar + 1]; const custo = RUN.custoReviverAndar(run);
+    let h = cabecalho('Cidade') + `<div class="win box center-box"><small class="tag">Andar ${run.andar} limpo</small><h2>Uma cidade no caminho</h2>
+      <p>O grupo dorme em camas de verdade: <b>PV e PM voltam ao máximo</b> ao partir. O templo da cidade traz de volta quem caiu, se houver ouro.</p><div class="rest">`;
+    run.herois.forEach((x, hi) => { if (!x.morto) return; const he = H(x.hid);
+      h += `<button class="restc" data-rev="${hi}" ${run.ouro >= custo ? '' : 'disabled'}><b>⛪ Reviver ${esc(he.nome.split(' ')[0])}</b><span>${esc(D.CLASSES[he.classe].nome)} volta à vida com PV cheios.</span><small>T$ ${custo}</small></button>`; });
+    if (!run.herois.some(x => x.morto)) h += '<p class="mut">Ninguém caiu neste andar.</p>';
+    h += `</div><p>Próximo: <b>andar ${run.andar + 1} · ${esc(prox.nome)}</b>, até o nível ${prox.teto}${run.andar + 1 >= RUN.ULTIMO_ANDAR ? ' e o chefe final' : ''}.</p>
+      <button class="btn gold bbig" id="cIr">🗺 Partir para o andar ${run.andar + 1}</button></div>`;
+    mostrar(h, 'cidade'); ligarCabecalho(telaCidade);
+    ligar('[data-rev]', d => { RUN.reviverNaCidade(run, +d.rev); salvar(); telaCidade(); });
+    $('cIr').onclick = () => { clique(); RUN.proximoAndar(run); S.sel = null; salvar(); telaMapa(); };
   }
   function novidades(de, para) {
     const out = [];
@@ -435,13 +453,13 @@
     const run = S.run; if (!run) return voltarAoMenu();
     if (!run.resumo) { run.resumo = RUN.encerrarRun(run, S.meta, run.desistiu); salvar(); }
     const r = run.resumo; const st = r.stats;
-    let h = `<div class="win box center-box fim ${r.venceu ? '' : 'red'}"><small class="tag">Fim da run</small><h2>${r.venceu ? '🏆 Vitória! O andar 1 está limpo' : r.desistiu ? 'O grupo voltou para casa' : '💀 O grupo caiu'}</h2>
+    let h = `<div class="win box center-box fim ${r.venceu ? '' : 'red'}"><small class="tag">Fim da run</small><h2>${r.venceu ? '🏆 Vitória! O chefe final caiu' : r.desistiu ? 'O grupo voltou para casa' : '💀 O grupo caiu'}</h2>
       <div class="faces">${run.herois.map(x => `<div class="${x.morto ? 'x' : ''}" style="background-image:${PX(H(x.hid).token)}" title="${esc(H(x.hid).nome)}"></div>`).join('')}</div>
-      <div class="pts">+${r.pts.toLocaleString('pt-BR')} <small>pontos</small></div><p class="mut">Total: ${r.total.toLocaleString('pt-BR')} pontos (XP que cada herói ganhou${r.venceu ? ' + 2.000 pela vitória' : ''})</p>
-      <div class="statg"><span><b>${r.nivel}</b>nível final</span><span><b>${st.batalhas}</b>batalhas</span><span><b>${st.abates}</b>inimigos</span><span><b>${st.mortes}</b>mortes</span><span><b>T$ ${st.ouroGanho}</b>ouro achado</span></div>`;
-    if (r.venceu && r.fica.length) h += `<div class="news">🎒 <b>Ficam no baú da guilda:</b> ${r.fica.map(i => I(i).ic + ' ' + esc(I(i).nome)).join(', ')}</div>`;
-    if (r.ouro) h += `<div class="news">💰 <b>T$ ${r.ouro.toLocaleString('pt-BR')} vão para o cofre da guilda</b>${r.guardado ? ' (o Banco guardou 25%)' : ''}. Cofre: T$ ${S.meta.ouro.toLocaleString('pt-BR')}.</div>`;
-    if (!r.venceu) h += `<p class="mut">Perdeu a run: itens${r.guardado ? '' : ' e ouro'} ficam pelo caminho. O nível volta ao 1º na próxima.</p>`;
+      <div class="pts">+${r.pts.toLocaleString('pt-BR')} <small>pontos</small></div><p class="mut">Total: ${r.total.toLocaleString('pt-BR')} pontos (XP que cada herói ganhou${r.andares ? ` + ${(2000 * r.andares).toLocaleString('pt-BR')} pelos andares limpos` : ''}${r.venceu ? ' + 10.000 pela vitória' : ''})</p>
+      <div class="statg"><span><b>${r.andar || 1}</b>andar</span><span><b>${r.nivel}</b>nível final</span><span><b>${st.batalhas}</b>batalhas</span><span><b>${st.abates}</b>inimigos</span><span><b>${st.mortes}</b>mortes</span><span><b>T$ ${st.ouroGanho}</b>ouro achado</span></div>`;
+    if (r.fica.length) h += `<div class="news">🎒 <b>Ficam no baú da guilda:</b> ${r.fica.map(i => I(i).ic + ' ' + esc(I(i).nome)).join(', ')}</div>`;
+    if (r.ouro) h += `<div class="news">💰 <b>T$ ${r.ouro.toLocaleString('pt-BR')} vão para o cofre da guilda</b>${r.guardado ? ' (parte guardada pelo Banco e pelos andares limpos)' : ''}. Cofre: T$ ${S.meta.ouro.toLocaleString('pt-BR')}.</div>`;
+    if (!r.venceu) h += `<p class="mut">${r.andares ? 'Quem limpa um andar traz os itens de volta; o resto do ouro fica pelo caminho.' : `Perdeu a run: itens${r.guardado ? '' : ' e ouro'} ficam pelo caminho.`} O nível volta ao 1º na próxima.</p>`;
     for (const m of r.novos) h += `<div class="news unlock">🔓 <b>Liberado: ${esc(m.nome)}</b><br>${esc(m.desc)}</div>`;
     const prox = RUN.MARCOS.find(x => S.meta.pontos < x.pts); if (prox) h += `<p class="mut">Próximo marco: ${esc(prox.nome)} em ${prox.pts.toLocaleString('pt-BR')} pontos.</p>`;
     h += `<div class="row" style="justify-content:center"><button class="btn gold bbig" id="fNova">⚔ Nova run</button>${RUN.liberado(S.meta, 'guilda') ? '<button class="btn bbig" id="fGuilda">🏛 Guilda</button>' : ''}<button class="btn" id="fMenu">Menu</button></div></div>`;
@@ -477,7 +495,7 @@
     if (aviso) h += `<p class="redt"><b>${esc(aviso)}</b></p>`;
     if (!ok) h += `<p><b>${esc(mk.nome)}:</b> ${esc(mk.desc)}</p><p>Faltam <b>${ptsTxt(mk.pts - m.pontos)}</b> pontos. A pontuação é o XP que seus heróis acumulam em todas as runs.</p>`;
     else if (aba === 'bau') {
-      h += m.bau.length ? `<p class="mut">Na pré-run você pode levar até 2 destes itens. Vender à guilda rende metade do preço do livro (o ouro fica no cofre).</p><div class="bau">${m.bau.map((id, k) => `<div class="itm"><span>${I(id).ic}</span>${esc(I(id).nome)}<em>${esc(I(id).desc)}</em><button class="btn sm" data-gv="${k}">Vender por T$ ${ptsTxt(Math.floor(I(id).preco / 2))}</button></div>`).join('')}</div>` : '<p class="mut">O baú está vazio. Itens equipados e da mochila voltam com você quando o grupo vence o andar.</p>';
+      h += m.bau.length ? `<p class="mut">Na pré-run você pode levar até 2 destes itens. Vender à guilda rende metade do preço do livro (o ouro fica no cofre).</p><div class="bau">${m.bau.map((id, k) => `<div class="itm"><span>${I(id).ic}</span>${esc(I(id).nome)}<em>${esc(I(id).desc)}</em><button class="btn sm" data-gv="${k}">Vender por T$ ${ptsTxt(Math.floor(I(id).preco / 2))}</button></div>`).join('')}</div>` : '<p class="mut">O baú está vazio. Itens equipados e da mochila voltam com você quando o grupo limpa ao menos um andar.</p>';
     } else if (sala.treino) {
       h += `<p class="mut">Cada treino dá +${RUN.PV_TREINO} PV fixos a todo herói daquela classe, em todas as runs. Até ${RUN.TREINO_CUSTO.length} treinos por classe.</p><div class="ofs">`;
       for (const [cid, C] of Object.entries(D.CLASSES)) {
@@ -503,7 +521,7 @@
     ligar('[data-treino]', d => { const e = RUN.comprarTreino(m, d.treino); salvar(); telaGuilda(aba, e); });
   }
 
-  function continuar() { if (!S.run) return telaPre(); if (S.run.fim) return telaFim(); telaMapa(); }
+  function continuar() { if (!S.run) return telaPre(); if (S.run.fim) return telaFim(); if (S.run.proxAndar && !S.run.pendente) return telaCidade(); telaMapa(); }
 
   // o botão ☰ Menu fora da batalha volta ao menu principal
   $('tMenu').addEventListener('click', e => { if (!root.classList.contains('hidden')) { e.stopImmediatePropagation(); voltarAoMenu(); } }, true);
@@ -512,5 +530,5 @@
     window.NUVEM.ouvir(() => { montarBlocoMenu(); });
     window.NUVEM.puxar().then(d => { if (d) { aplicarNuvem(d); montarBlocoMenu(); } else if (!store.get('arena.salvoEm', 0) && (S.meta.runs || S.run)) salvar(); });
   }
-  window.RUNUI = { S, telaInicio, vestirTreino, telaLoja, telaDescanso, telaEvento, telaFim, telaResultado, telaPreBatalha, telaInventario, telaMapa, telaPre, telaGuilda, continuar, voltarDaBatalha, montarBlocoMenu, salvar };
+  window.RUNUI = { S, telaInicio, vestirTreino, telaLoja, telaDescanso, telaEvento, telaFim, telaResultado, telaPreBatalha, telaInventario, telaMapa, telaPre, telaGuilda, telaCidade, continuar, voltarDaBatalha, montarBlocoMenu, salvar };
 })();
