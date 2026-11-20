@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://arena-de-arton.vercel.app/sitemap.xml
+Sitemap: https://arena.javaijafoi.dev/sitemap.xml
