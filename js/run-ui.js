@@ -21,7 +21,9 @@
   const root = document.createElement('section'); root.id = 'run'; root.className = 'hidden'; document.body.insertBefore(root, $('tip'));
   function mostrar(html, cls) {
     $('menu').classList.add('hidden'); $('game').classList.add('hidden'); $('over').classList.add('hidden');
-    root.className = 'rv px ' + (cls || ''); root.innerHTML = html; window.scrollTo(0, 0); document.body.classList.add('em-run');
+    const mesma = !root.classList.contains('hidden') && root.dataset.tela === (cls || ''); const y = window.scrollY; const pw = $('pmWin'); const py = pw ? pw.scrollTop : 0;
+    root.className = 'rv px ' + (cls || ''); root.dataset.tela = cls || ''; root.innerHTML = html;
+    if (mesma) { window.scrollTo(0, y); const pw2 = $('pmWin'); if (pw2 && pw) pw2.scrollTop = py; root.dataset.manter = '1'; } else { window.scrollTo(0, 0); delete root.dataset.manter; } document.body.classList.add('em-run');
     $('topSub').textContent = S.run ? `Roguelike · andar ${S.run.andar} · nível ${S.run.nivel}` : 'Roguelike';
     $('tMenu').classList.remove('hidden');
   }
@@ -122,10 +124,15 @@
   function voltarAoMenu() { $('menu').classList.add('hidden'); document.body.classList.remove('px-treino'); A().G.modo = null; telaInicio(); }
 
   /* ---------- pré-run: montar o grupo ---------- */
+  function grupoAleatorio(n) {
+    const pool = D.HEROIS.slice().sort(() => Math.random() - 0.5); const out = [], cls = new Set();
+    for (const he of pool) { if (out.length >= n) break; if (!cls.has(he.classe)) { cls.add(he.classe); out.push(he.id); } }
+    return out;
+  }
   function telaPre() {
     const m = S.meta; const ouro = 150 + (RUN.liberado(m, 'bolsaRica') ? 100 : 0);
-    S.pre = S.pre || { grupo: store.get('arena.grupo', ['mari', 'hana', 'zaldrin', 'aria']).slice(0, 4), compras: { racao: 0, pocao: 0, barraca: 0, oleo: 0 }, bau: [] };
-    const P = S.pre; const PRECOS = { racao: 1, pocao: 30, barraca: 10, oleo: 30 };
+    S.pre = S.pre || { grupo: grupoAleatorio(3), compras: { racao: 0, pocao: 0, barraca: 0, oleo: 0 }, bau: [] };
+    const P = S.pre; const PRECOS = { racao: I('racao').preco, pocao: I('pocao').preco, barraca: I('barraca').preco, oleo: I('oleo').preco };
     const gasto = Object.entries(P.compras).reduce((a, [k, v]) => a + v * PRECOS[k], 0); const resta = ouro - gasto;
     if (!P.ver || !H(P.ver)) P.ver = P.grupo[0] || D.HEROIS[0].id;
     const ver = H(P.ver); const cv = D.CLASSES[ver.classe]; const u = R.criarHeroi(ver.id, 1, 0); const noGrupo = P.grupo.includes(ver.id);
@@ -146,7 +153,7 @@
     h += `<div class="win pg-lista"><h3>Heróis <small>(${P.grupo.length}/4 no grupo)</small></h3><div class="grade">`;
     for (const he of D.HEROIS) h += `<button class="ch${he.id === P.ver ? ' on' : ''}${P.grupo.includes(he.id) ? ' no' : ''}" data-ver="${he.id}" style="--c:${corH(he)}">${face(he.token)}<small>${esc(he.nome.split(' ').slice(-1)[0])}</small></button>`;
     h += `</div><p class="mut" style="margin-top:10px">Grupos menores sobem de nível mais rápido: o XP é dividido por quem começou a run.</p></div>`;
-    h += '<div class="pg-compra"><div class="win"><h3>Bolsa e cinto <small>cada herói já leva 1 poção; o grupo, 8 rações</small></h3>';
+    h += '<div class="pg-compra"><div class="win"><h3>Bolsa e cinto <small>cada herói já leva 1 poção; o grupo, 4 rações</small></h3>';
     for (const [k, nome, ic] of [['racao', 'Ração de viagem', '🍖'], ['pocao', 'Poção de Curar Ferimentos', '🧪'], ['barraca', 'Barraca', '⛺'], ['oleo', 'Óleo de Arma Mágica', '🫙']]) {
       h += `<div class="buyrow"><span class="ic">${ic}</span><span class="nm">${nome}<small>${esc(I(k).desc)}</small></span><span class="pr">T$ ${PRECOS[k]}</span><button class="btn sm" data-menos="${k}" ${P.compras[k] ? '' : 'disabled'}>−</button><b class="q">${P.compras[k]}</b><button class="btn sm" data-mais="${k}" ${resta >= PRECOS[k] && !(k === 'barraca' && P.compras[k]) ? '' : 'disabled'}>+</button></div>`;
     }
@@ -276,7 +283,7 @@
     $('mRap').onclick = () => { clique(); RUN.descansar(run, 'rapido', null); salvar(); telaMapa(); };
     $('mDesistir').onclick = e => { clique(); if (e.target.dataset.ok) { run.fim = 'derrota'; run.desistiu = true; salvar(); telaFim(); } else { e.target.dataset.ok = 1; e.target.textContent = 'Toque de novo para desistir'; } };
     // leva a rolagem até o grupo
-    const w = $('pmWin'); if (w) { const alvo = root.querySelector('.nd.atual'); if (alvo) { const r1 = w.getBoundingClientRect(), r2 = alvo.getBoundingClientRect(); w.scrollTop += r2.top - r1.top - w.clientHeight * 0.6; } }
+    const w = $('pmWin'); if (w && !root.dataset.manter) { const alvo = root.querySelector('.nd.atual'); if (alvo) { const r1 = w.getBoundingClientRect(), r2 = alvo.getBoundingClientRect(); w.scrollTop += r2.top - r1.top - w.clientHeight * 0.6; } }
   }
   function abrirPendente() {
     const run = S.run; const n = RUN.noAtual(run);
@@ -380,11 +387,11 @@
     const mortos = run.herois.filter(x => x.morto);
     let h = cabecalho('Fogueira') + `<div class="win box center-box"><small class="tag">Descanso</small><h2>${esc(n.nome)}</h2><p>O grupo acende uma fogueira longe da estrada.${n.descansou ? ' <b>Vocês já descansaram aqui.</b>' : ''}</p><div class="rest">`;
     for (const o of ops) h += `<button class="restc" data-desc="${o.id}" ${o.pode && !n.descansou ? '' : 'disabled'}><b>${o.id === 'longo' ? '⛺' : '🍖'} ${o.nome}</b><span>${o.desc}</span><small>${o.custo}</small></button>`;
-    if (run.templo && !run.usouTemplo && mortos.length) h += `<button class="restc" data-templo="1" ${run.ouro >= 100 ? '' : 'disabled'}><b>🕊 Templo da guilda</b><span>Uma vez por run: reviver ${esc(H(mortos[0].hid).nome)}.</span><small>T$ 100</small></button>`;
+    if (run.templo && !run.usouTemplo && mortos.length) h += `<button class="restc" data-templo="1" ${run.ouro >= 200 ? '' : 'disabled'}><b>🕊 Templo da guilda</b><span>Uma vez por run: reviver ${esc(H(mortos[0].hid).nome)}.</span><small>T$ 200</small></button>`;
     h += `</div><button class="btn gold bbig" id="dSair">➜ Seguir viagem</button></div>`;
     mostrar(h, 'desc'); ligarCabecalho(() => telaDescanso(n));
     ligar('[data-desc]', d => { RUN.descansar(run, d.desc, n); salvar(); telaDescanso(n); });
-    ligar('[data-templo]', () => { const x = run.herois.find(y => y.morto); x.morto = false; x.dano = Math.floor(RUN.pvMaxDe(x, run.nivel) / 2); x.pmGasto = 0; run.ouro -= 100; run.usouTemplo = true; salvar(); telaDescanso(n); });
+    ligar('[data-templo]', () => { const x = run.herois.find(y => y.morto); x.morto = false; x.dano = Math.floor(RUN.pvMaxDe(x, run.nivel) / 2); x.pmGasto = 0; run.ouro -= 200; run.usouTemplo = true; salvar(); telaDescanso(n); });
     $('dSair').onclick = () => { clique(); sair(); };
   }
 
