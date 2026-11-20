@@ -2,7 +2,9 @@
    Os nomes e o ND vêm de Ameaças de Arton. Os números não: as fichas do livro foram feitas para
    heróis com todos os poderes e itens, e os heróis deste jogo são mais simples. Por isso cada
    criatura é gerada por uma curva por ND (ajustada no simulador, test/run-sim.js) e um papel
-   (bruto, fera, tanque, ágil, atirador, arcano, divino, dragão). */
+   (bruto, fera, tanque, ágil, atirador, arcano, divino, dragão).
+   Os retratos (arton-assets/tokens) são as ilustrações do próprio livro; o Urso das Cavernas e o Golem de Pedra
+   usam os retratos do urso e do golem que o jogo já tinha, e os três necrodracos dividem a mesma ilustração. */
 (function (root) {
   'use strict';
   const node = typeof module !== 'undefined' && module.exports;
@@ -77,7 +79,7 @@
     dragaoJovem: criatura('Dragão Jovem do Ocaso', 7, 'dragao', { sopro: 'Sopro sombrio' }),
     // andar 3 · Montanhas Uivantes (níveis 8 a 12)
     mamute: criatura('Mamute', 8, 'bruto', { tipo: 'animal', arma: 'Presas', dano: 'perfuração', grande: true }),
-    ursoCavernas: criatura('Urso das Cavernas', 8, 'fera', { tipo: 'animal', grande: true }),
+    ursoCavernas: criatura('Urso das Cavernas', 8, 'fera', { tipo: 'animal', grande: true, token: 'urso' }),
     morteGlacial: criatura('Morte Glacial', 9, 'agil', { arma: 'Espada curta', extra: [1, 6, 'frio'] }),
     keylor: criatura('Keylor', 9, 'bruto', { tipo: 'humanoide', arma: 'Machado de guerra', grande: true }),
     golemBronze: criatura('Golem de Bronze', 9, 'tanque', { tipo: 'construto', arma: 'Pancada' }),
@@ -86,7 +88,7 @@
     dracomante: criatura('Dracomante', 8, 'arcano', { tipo: 'humanoide' }),
     bruxaGoblin: criatura('Bruxa Goblin', 11, 'arcano', { tipo: 'humanoide', magias: ['raioPolar', 'bolaDeFogo', 'amarras'] }),
     dragaoAdulto: criatura('Dragão Adulto', 11, 'dragao', { sopro: 'Sopro de gelo' }),
-    golemPedra: criatura('Golem de Pedra', 12, 'tanque', { tipo: 'construto', arma: 'Pancada', grande: true }),
+    golemPedra: criatura('Golem de Pedra', 12, 'tanque', { tipo: 'construto', arma: 'Pancada', grande: true, token: 'golem' }),
     // andar 4 · Aslothia, o reino dos mortos (níveis 12 a 16)
     mortalha: criatura('Mortalha', 11, 'agil', { tipo: 'morto-vivo', arma: 'Toque drenante', dano: 'trevas' }),
     reiTiranoEsqueleto: criatura('Rei-Tirano Esqueleto', 12, 'bruto', { tipo: 'morto-vivo', arma: 'Mordida', dano: 'perfuração', grande: true }),
@@ -107,6 +109,8 @@
     rubro: criatura('Rubro, Forma Final', 16, 'agil', { tipo: 'lefeu', extra: [1, 6, 'trevas'] }),
     necrodracoLich: criatura('Necrodraco Lich', 20, 'dragao', { tipo: 'morto-vivo', sopro: 'Sopro necrótico' }),
   };
+  // sem ilustração própria no livro: usam o emblema e o mapa mostra o ícone do nó
+  for (const k of ['tigre', 'rinoceronte', 'lyuba', 'lich']) NOVAS[k].semArte = true;
   for (const k in NOVAS) if (!D.CRIATURAS[k]) D.CRIATURAS[k] = NOVAS[k];
 
   const API = { NOVAS, criatura, curva };

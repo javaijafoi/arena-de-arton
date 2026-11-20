@@ -219,7 +219,7 @@
   }
   function rostoDoNo(run, n) {
     if (!['batalha', 'elite', 'chefe'].includes(n.tipo)) return null;
-    const g = RUN.inimigosDoNo(run, n); const id = g.chefe || g.ids[0]; const NOV = (window.T20BESTIARIO || {}).NOVAS || {}; return id && !NOV[id] ? D.CRIATURAS[id].token : null; // monstros sem retrato ainda: o nó mostra o ícone do tipo
+    const g = RUN.inimigosDoNo(run, n); const id = g.chefe || g.ids[0]; return id && !D.CRIATURAS[id].semArte ? D.CRIATURAS[id].token : null; // monstro sem retrato: o nó mostra o ícone do tipo
   }
   function telaMapa() {
     const run = S.run; if (!run) return voltarAoMenu();
