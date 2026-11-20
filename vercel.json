@@ -1,0 +1,15 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "arena-de-arton.vercel.app"
+        }
+      ],
+      "destination": "https://arena.javaijafoi.dev/:path*",
+      "statusCode": 301
+    }
+  ]
+}
