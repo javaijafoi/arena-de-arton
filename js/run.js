@@ -37,19 +37,19 @@
   // slot: arma | armadura | acessorio | cinto | bolsa.  ef: efeitos passivos aplicados ao herói na batalha.
   const ITENS = {
     // cinto (uso em batalha)
-    pocao: { nome: 'Poção de Curar Ferimentos', slot: 'cinto', preco: 50, ic: '🧪', desc: 'Cura 2d8+2 PV. Ação padrão; pode dar a um aliado adjacente, até desmaiado.', uso: { cura: [2, 8, 2] } },
+    pocao: { nome: 'Poção de Curar Ferimentos', slot: 'cinto', preco: 75, ic: '🧪', desc: 'Cura 2d8+2 PV. Ação padrão; pode dar a um aliado adjacente, até desmaiado.', uso: { cura: [2, 8, 2] } },
     pocaoMaior: { nome: 'Poção de Curar Ferimentos (maior)', slot: 'cinto', preco: 300, ic: '🧪', desc: 'Cura 4d8+4 PV. Ação padrão; pode dar a um aliado adjacente.', uso: { cura: [4, 8, 4] } },
     oleo: { nome: 'Óleo de Arma Mágica', slot: 'cinto', preco: 60, ic: '🫙', desc: '+1 em ataque e dano até o fim da batalha. Ação de movimento.', uso: { arma: 1 } },
     protecao: { nome: 'Poção de Proteção Divina', slot: 'cinto', preco: 60, ic: '✨', desc: '+2 em testes de resistência até o fim da batalha. Ação de movimento.', uso: { protecao: 2 } },
     granada: { nome: 'Granada de Bola de Fogo', slot: 'cinto', preco: 300, ic: '💣', desc: '6d6 de fogo no alvo e em quem estiver ao lado dele (Reflexos CD 15 reduz à metade). Alcance médio.', uso: { area: [6, 6], cd: 15, tipo: 'fogo' } },
     velocidade: { nome: 'Poção de Velocidade', slot: 'cinto', preco: 300, ic: '⚡', desc: 'Uma ação padrão extra por turno até o fim da batalha. Ação de movimento.', uso: { velocidade: true } },
     // bolsa (entre batalhas)
-    racao: { nome: 'Ração de viagem', slot: 'bolsa', preco: 6, ic: '🍖', desc: 'Frango assado, pão e queijo: um dia de estrada para um herói. Descansar gasta uma por herói vivo.' },
-    barraca: { nome: 'Barraca', slot: 'bolsa', preco: 40, ic: '⛺', desc: 'Permite descanso longo numa fogueira (recupera tudo).' },
+    racao: { nome: 'Ração de viagem', slot: 'bolsa', preco: 3, ic: '🍖', desc: 'Frango assado, pão e queijo: um dia de estrada para um herói. Descansar gasta uma por herói vivo.' },
+    barraca: { nome: 'Barraca', slot: 'bolsa', preco: 60, ic: '⛺', desc: 'Permite descanso longo numa fogueira (recupera tudo).' },
     corda: { nome: 'Corda', slot: 'bolsa', preco: 10, ic: '🪢', desc: 'Ajuda em alguns eventos (escalar, descer, amarrar).' },
     // armas superiores (melhoria no item que o herói já usa)
-    certeira: { nome: 'Arma superior (certeira)', slot: 'arma', preco: 450, ic: '🗡', desc: '+1 nos testes de ataque.', ef: { ataque: 1 } },
-    cruel: { nome: 'Arma superior (cruel)', slot: 'arma', preco: 450, ic: '🗡', desc: '+1 nas rolagens de dano.', ef: { dano: 1 } },
+    certeira: { nome: 'Arma superior (certeira)', slot: 'arma', preco: 700, ic: '🗡', desc: '+1 nos testes de ataque.', ef: { ataque: 1 } },
+    cruel: { nome: 'Arma superior (cruel)', slot: 'arma', preco: 700, ic: '🗡', desc: '+1 nas rolagens de dano.', ef: { dano: 1 } },
     certeiraCruel: { nome: 'Arma superior (certeira e cruel)', slot: 'arma', preco: 3000, ic: '🗡', desc: '+1 no ataque e +1 no dano.', ef: { ataque: 1, dano: 1 } },
     // armas mágicas (só elite, chefe e evento)
     flamejante: { nome: 'Arma flamejante', slot: 'arma', preco: 18000, ic: '🔥', magico: true, desc: '+1d6 de dano de fogo em cada acerto.', ef: { extra: [1, 6, 'fogo'] } },
@@ -57,7 +57,7 @@
     eletrica: { nome: 'Arma elétrica', slot: 'arma', preco: 18000, ic: '⚡', magico: true, desc: '+1d6 de dano de eletricidade em cada acerto.', ef: { extra: [1, 6, 'eletricidade'] } },
     ameacadora: { nome: 'Arma ameaçadora', slot: 'arma', preco: 18000, ic: '🎯', magico: true, desc: 'A margem de ameaça da arma dobra (19-20 vira 17-20).', ef: { ameacadora: true } },
     // armaduras
-    reforcada: { nome: 'Armadura superior (reforçada)', slot: 'armadura', preco: 450, ic: '🛡', desc: '+1 na Defesa.', ef: { def: 1 } },
+    reforcada: { nome: 'Armadura superior (reforçada)', slot: 'armadura', preco: 700, ic: '🛡', desc: '+1 na Defesa.', ef: { def: 1 } },
     defensora: { nome: 'Armadura defensora', slot: 'armadura', preco: 18000, ic: '🛡', magico: true, desc: '+2 na Defesa.', ef: { def: 2 } },
     protetora: { nome: 'Armadura protetora', slot: 'armadura', preco: 18000, ic: '🛡', magico: true, desc: '+1 na Defesa e +2 em testes de resistência.', ef: { def: 1, res: 2 } },
     // acessórios menores
@@ -168,7 +168,7 @@
     const seed = (cfg.seed >>> 0) || ((Math.random() * 1e9) | 0);
     const run = {
       v: 1, seed, sorte: { seed: seed ^ 0x5bd1e995 }, andar: 1, xp: 0, nivel: 1, ouro: cfg.ouro != null ? cfg.ouro : 150,
-      herois: cfg.herois.slice(0, 4).map(hid => ({ hid, dano: 0, pmGasto: 0, morto: false, equip: { arma: null, armadura: null, acessorio: null }, cinto: ['pocao', null, null] })),
+      herois: cfg.herois.slice(0, 4).map(hid => ({ hid, dano: 0, pmGasto: 0, morto: false, equip: { arma: null, armadura: null, acessorio: null }, cinto: ['pocao', null, null], pvTreino: (cfg.treino && cfg.treino[(D.HEROIS.find(x => x.id === hid) || {}).classe]) * PV_TREINO || 0 })),
       bolsa: { racao: 4, barraca: 0, corda: 0 }, mochila: [],
       mapa: null, atual: 0, caminho: [0], log: [], fim: null, pendente: null,
       stats: { batalhas: 0, elites: 0, abates: 0, xp: 0, ouroGanho: 0, mortes: 0, rodadas: 0 },
@@ -224,7 +224,7 @@
   }
 
   /* ---------- herói na batalha: aplica dano, PM, itens ---------- */
-  function efeitosDe(h) { return ['arma', 'armadura', 'acessorio'].map(s => h.equip[s] && ITENS[h.equip[s]]).filter(Boolean).map(I => I.ef || {}); }
+  function efeitosDe(h) { const e = ['arma', 'armadura', 'acessorio'].map(s => h.equip[s] && ITENS[h.equip[s]]).filter(Boolean).map(I => I.ef || {}); if (h.pvTreino) e.push({ pvTreino: h.pvTreino }); return e; }
   function aplicarItens(u, h, nivel) {
     const c = D.CLASSES[u.classe];
     for (const ef of efeitosDe(h)) {
@@ -235,6 +235,7 @@
       if (ef.def) u.defBase += ef.def;
       if (ef.res) { u.per.fort += ef.res; u.per.ref += ef.res; u.per.von += ef.res; }
       if (ef.pv) { u.pvMax += ef.pv; u.pv += ef.pv; }
+      if (ef.pvTreino) { u.pvMax += ef.pvTreino; u.pv += ef.pvTreino; }
       if (ef.for) { u.attr.for += ef.for; u.per.luta += ef.for; }
       if (ef.des) { u.attr.des += ef.des; u.per.pont += ef.des; u.per.ref += ef.des; u.per.inic += ef.des; if (!c.armaduraPesada) u.defBase += ef.des; }
       if (ef.con) { u.attr.con += ef.con; u.per.fort += ef.con; u.pvMax += ef.con * nivel; u.pv += ef.con * nivel; }
@@ -351,12 +352,12 @@
     const out = []; const precisa = racoesNecessarias(run);
     out.push({ id: 'rapido', nome: 'Descanso rápido', desc: 'Recupera metade dos PV e PM perdidos.', custo: `${precisa} ração`, pode: run.bolsa.racao >= precisa });
     if (n && (n.tipo === 'descanso')) out.push({ id: 'longo', nome: 'Descanso longo', desc: 'Recupera todos os PV e PM.', custo: `${precisa} ração + barraca`, pode: run.bolsa.racao >= precisa && run.bolsa.barraca > 0 });
-    if (n && n.tipo === 'taverna') out.push({ id: 'quarto', nome: 'Quarto na taverna', desc: 'Cama, comida quente: recupera tudo.', custo: 'T$ 60', pode: run.ouro >= 60 });
+    if (n && n.tipo === 'taverna') out.push({ id: 'quarto', nome: 'Quarto na taverna', desc: 'Cama, comida quente: recupera tudo.', custo: 'T$ 90', pode: run.ouro >= 90 });
     return out;
   }
   function descansar(run, tipo, n) {
     const op = opcoesDescanso(run, n).find(o => o.id === tipo); if (!op || !op.pode) return 'Não dá para descansar assim.';
-    if (tipo === 'quarto') run.ouro -= 60; else run.bolsa.racao -= racoesNecessarias(run);
+    if (tipo === 'quarto') run.ouro -= 90; else run.bolsa.racao -= racoesNecessarias(run);
     for (const h of vivos(run)) {
       if (tipo === 'rapido') { h.dano = Math.floor(h.dano / 2); h.pmGasto = Math.floor(h.pmGasto / 2); } else { h.dano = 0; h.pmGasto = 0; }
     }
@@ -439,8 +440,8 @@
       nome: 'Taverna do Javali Torto', ic: '🍺', taverna: true,
       texto: 'Uma taverna de beira de estrada, fumaça e cheiro de ensopado.',
       escolhas: [
-        { id: 'quarto', txt: 'Alugar quartos (recupera tudo)', req: r => r.ouro >= 60, reqTxt: 'T$ 60', ok: (r) => { r.ouro -= 60; for (const h of vivos(r)) { h.dano = 0; h.pmGasto = 0; } return 'Cama de palha nunca foi tão boa. Grupo recuperado.'; } },
-        { id: 'comida', txt: 'Comprar provisões (4 rações por T$ 20)', req: r => r.ouro >= 20, reqTxt: 'T$ 20', ok: (r) => { r.ouro -= 20; r.bolsa.racao += 4; return '+4 rações na bolsa.'; } },
+        { id: 'quarto', txt: 'Alugar quartos (recupera tudo)', req: r => r.ouro >= 90, reqTxt: 'T$ 90', ok: (r) => { r.ouro -= 90; for (const h of vivos(r)) { h.dano = 0; h.pmGasto = 0; } return 'Cama de palha nunca foi tão boa. Grupo recuperado.'; } },
+        { id: 'comida', txt: 'Comprar provisões (4 rações por T$ 10)', req: r => r.ouro >= 10, reqTxt: 'T$ 10', ok: (r) => { r.ouro -= 10; r.bolsa.racao += 4; return '+4 rações na bolsa.'; } },
         { id: 'boatos', txt: 'Ouvir boatos', pericia: 'diplomacia', cd: 12, ok: (r, o) => { const t = rolar(o, 1, 6, 0) * 10; r.ouro += t; return `Um bêbado conta onde escondeu economias. Vocês acham T$ ${t}.`; }, falha: () => 'Só histórias de pescador.' },
       ]
     },
@@ -488,13 +489,33 @@
 
   /* ---------- progresso permanente ---------- */
   const MARCOS = [
-    { id: 'guilda', pts: 1500, nome: 'Guilda dos Aventureiros', desc: 'Abre a guilda: baú com os itens que você trouxe de volta e venda à guilda.' },
-    { id: 'bolsaRica', pts: 8000, nome: 'Família rica', desc: 'Começa a run com T$ 100 a mais.' },
-    { id: 'templo', pts: 16000, nome: 'Templo', desc: 'Uma vez por run, reviva um herói por T$ 200 na fogueira.' },
-    { id: 'nivel2', pts: 30000, nome: 'Torre de treino', desc: 'O grupo começa a run no nível 2.' },
+    { id: 'guilda', pts: 1500, nome: 'Guilda dos Aventureiros', desc: 'Abre a guilda: baú, venda à guilda, Banco e treino de classe.' },
+    { id: 'bolsaRica', pts: 8000, nome: 'Família rica e Armeiro', desc: 'Libera na guilda a Família rica (+T$ 100 na partida) e o Armeiro.' },
+    { id: 'templo', pts: 16000, nome: 'Templo', desc: 'Libera o Templo na guilda: reviver um herói por run.' },
+    { id: 'nivel2', pts: 30000, nome: 'Torre de treino', desc: 'Libera a Torre na guilda: começar a run no nível 2.' },
   ];
   function novoMeta() { return { v: 1, pontos: 0, porClasse: {}, runs: 0, vitorias: 0, bau: [], ouro: 0, melhor: 0, historico: [] }; }
   function liberado(meta, id) { const m = MARCOS.find(x => x.id === id); return !!m && meta.pontos >= m.pts; }
+  // pontos liberam o acesso; o ouro do cofre paga. Melhorias compradas valem para todas as runs.
+  const PV_TREINO = 4; const TREINO_CUSTO = [800, 1600, 3200];
+  const MELHORIAS = [
+    { id: 'banco', marco: 'guilda', custo: 1500, nome: 'Banco', desc: 'Guarda 25% do ouro da run no cofre mesmo se o grupo cair.' },
+    { id: 'armeiro', marco: 'bolsaRica', custo: 3000, nome: 'Armeiro', desc: 'Cada herói começa a run com uma arma superior (certeira).' },
+    { id: 'bolsaRica', marco: 'bolsaRica', custo: 2000, nome: 'Família rica', desc: 'Começa a run com T$ 100 a mais.' },
+    { id: 'templo', marco: 'templo', custo: 4000, nome: 'Templo', desc: 'Uma vez por run, reviva um herói por T$ 200 na fogueira.' },
+    { id: 'nivel2', marco: 'nivel2', custo: 8000, nome: 'Torre de treino', desc: 'O grupo começa a run no nível 2.' },
+  ];
+  function tem(meta, id) { return !!(meta.compras && meta.compras[id]) && liberado(meta, (MELHORIAS.find(x => x.id === id) || {}).marco); }
+  function comprarMelhoria(meta, id) {
+    const M = MELHORIAS.find(x => x.id === id); if (!M) return 'Não existe.'; if (!liberado(meta, M.marco)) return 'Ainda bloqueado.';
+    meta.compras = meta.compras || {}; if (meta.compras[id]) return 'Já comprado.'; if (meta.ouro < M.custo) return 'Ouro insuficiente no cofre.';
+    meta.ouro -= M.custo; meta.compras[id] = true; return null;
+  }
+  function custoTreino(meta, classe) { const n = (meta.treino || {})[classe] || 0; return n < TREINO_CUSTO.length ? TREINO_CUSTO[n] : null; }
+  function comprarTreino(meta, classe) {
+    if (!liberado(meta, 'guilda')) return 'Ainda bloqueado.'; const c = custoTreino(meta, classe); if (c == null) return 'Treino completo.'; if (meta.ouro < c) return 'Ouro insuficiente no cofre.';
+    meta.ouro -= c; meta.treino = meta.treino || {}; meta.treino[classe] = (meta.treino[classe] || 0) + 1; return null;
+  }
   // fim de run: soma pontuação (XP histórico), guarda itens e ouro se venceu
   function encerrarRun(run, meta, desistiu) {
     const venceu = run.fim === 'vitoria'; const antes = meta.pontos;
@@ -507,8 +528,9 @@
       for (const it of run.mochila) if (ITENS[it].slot !== 'cinto') fica.push(it);
       meta.bau.push(...fica); meta.ouro += run.ouro;
     }
+    const guardado = !venceu && tem(meta, 'banco') ? Math.floor(run.ouro / 4) : 0; meta.ouro += guardado;
     const novos = MARCOS.filter(m => antes < m.pts && meta.pontos >= m.pts);
-    const resumo = { venceu, desistiu: !!desistiu, pts, total: meta.pontos, fica, ouro: venceu ? run.ouro : 0, novos, nivel: run.nivel, stats: { ...run.stats } };
+    const resumo = { venceu, desistiu: !!desistiu, pts, total: meta.pontos, fica, ouro: venceu ? run.ouro : guardado, guardado, novos, nivel: run.nivel, stats: { ...run.stats } };
     meta.melhor = Math.max(meta.melhor, pts);
     meta.historico.unshift({ data: Date.now(), venceu, pts, nivel: run.nivel, herois: run.herois.map(h => h.hid) }); meta.historico = meta.historico.slice(0, 20);
     return resumo;
@@ -521,7 +543,7 @@
     prepararBatalha, ajustarBatalha, concluirBatalha, unidadeHeroi, pvMaxDe, pmMaxDe,
     darItem, equipar, desequipar, estoqueLoja, comprar, vender, precoVenda,
     opcoesDescanso, descansar, racoesNecessarias, escolhasEvento, resolverEvento, bonusPericia,
-    novoMeta, liberado, encerrarRun, vendaGuilda,
+    novoMeta, liberado, encerrarRun, vendaGuilda, MELHORIAS, tem, comprarMelhoria, custoTreino, comprarTreino, PV_TREINO, TREINO_CUSTO,
   };
   if (node) module.exports = API; else root.T20RUN = API;
 })(this);

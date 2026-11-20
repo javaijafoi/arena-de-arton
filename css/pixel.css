@@ -309,3 +309,11 @@ body.em-run footer a{color:var(--gold)!important}
 body.em-run,#run.px{font-variant-ligatures:none;font-feature-settings:"liga" 0}
 body.px-treino #menu select#selEnc{background:var(--par)!important;color:var(--pink)}
 body.px-treino #menu .lvl{font-family:'VT323';font-weight:400}
+/* guilda: ofertas pagas com o cofre */
+.ofs{display:grid;gap:8px;margin:8px 0}
+.of{display:flex;align-items:center;gap:10px;background:var(--par3);border:3px solid var(--par2);padding:6px 8px}
+.of>div{flex:1;min-width:0;display:grid}
+.of b{font:700 15px 'Pixelify Sans';text-transform:uppercase}
+.of small{font-size:17px;color:#6a5040;line-height:1}
+.of .btn{flex:none}
+.salao{grid-template-columns:repeat(3,minmax(0,1fr))}

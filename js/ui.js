@@ -687,26 +687,65 @@
     el.innerHTML = `<h3>Previsão</h3><div class="fc"><div><div class="p ${u.lado}" style="background-image:${TOK(u.token)}"></div><b style="font-size:12px">${u.nome.split(' ')[0]}</b></div><div class="vs">VS</div><div><div class="p ${o.lado}" style="background-image:${TOK(o.token)}"></div><b style="font-size:12px">${o.nome.split(' ')[0]}</b></div></div>${corpo}`;
   }
 
+  /* ---------- mira de efeitos em área (confirmação) ---------- */
+  function celulasDoEfeito(st, u, s, c, o) {
+    if (s.modo === 'magia') {
+      const M = D.MAGIAS[s.magia]; if (!['esfera', 'cubo', 'cone', 'linha'].includes(M.forma)) return null;
+      if (['cone', 'linha'].includes(M.forma) && c.x === u.x && c.y === u.y) return null;
+      return R.areaMagia(st, u, s.magia, c, limpa(s.aprim));
+    }
+    if (s.modo === 'hab' && s.hab === 'sopro') return c.x === u.x && c.y === u.y ? null : linhaSopro(u, c);
+    if (s.modo === 'item') {
+      const it = (G.ops.itens || []).find(x => x.k === s.slot); if (!it || !o || !it.alvos.includes(o.id)) return null;
+      const I = R.ITENS_CINTO[it.id]; if (!I || !I.area) return null;
+      const cel = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cel.push({ x: o.x + dx, y: o.y + dy }); return cel;
+    }
+    return null;
+  }
+  function mostrarMira(atingidos, aliados, u) {
+    let el = $('mira'); if (!el) { el = document.createElement('div'); el.id = 'mira'; el.className = 'win'; document.body.appendChild(el); }
+    const ini = atingidos.filter(x => x.lado !== u.lado);
+    const nomes = l => l.map(x => x.nome.split(' ')[0]).join(', ');
+    el.innerHTML = `<div class="mi-t">${ini.length ? `🎯 ${ini.length} inimigo${ini.length > 1 ? 's' : ''}` : '🎯 nenhum inimigo'}${aliados.length ? `<b class="mi-al">⚠ ${nomes(aliados)}</b>` : ''}</div>
+      <button class="mi-b ok" id="miOk" title="Confirmar">✓</button><button class="mi-b x" id="miX" title="Cancelar">✕</button>`;
+    el.classList.remove('hidden');
+    $('miX').onclick = e => { e.stopPropagation(); cancelar(); };
+    $('miOk').onclick = e => { e.stopPropagation(); const m = G.mira; if (m && m.sel === G.sel) { esconderMira(); cliqueNaCelula(m.c, true); } };
+  }
+  function esconderMira() { G.mira = null; const el = $('mira'); if (el) el.classList.add('hidden'); }
+  window.addEventListener('pointerdown', e => { G.toque = e.pointerType !== 'mouse'; }, true);
+
   /* ---------- cliques no mapa ---------- */
   function celulaDoEvento(e) { const r = $('board').getBoundingClientRect(); const x = Math.floor((e.clientX - r.left) / G.scale / S), y = Math.floor((e.clientY - r.top) / G.scale / S); return (x < 0 || y < 0 || x >= COLS || y >= ROWS) ? null : { x, y }; }
   $('board').addEventListener('mousemove', e => {
-    if (!G.st) return; const c = celulaDoEvento(e); const ant = G.hover;
+    if (!G.st || (G.mira && G.toque)) return; const c = celulaDoEvento(e); const ant = G.hover;
     if (c && ant && c.x === ant.x && c.y === ant.y) return; G.hover = c; desenharDestaques(); previsao();
     const o = c && R.unidadeEm(G.st, c.x, c.y); const tip = $('tip');
     if (o) { tip.innerHTML = `<b>${o.nome}</b><br>PV ${Math.max(0, o.pv)}/${o.pvMax}${o.pmMax ? ' · PM ' + o.pm + '/' + o.pmMax : ''} · Def ${R.defesa(G.st, o, null, 'cac').valor}`; tip.classList.remove('hidden'); tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
     else tip.classList.add('hidden');
   });
-  $('board').addEventListener('mouseleave', () => { G.hover = null; $('tip').classList.add('hidden'); desenharDestaques(); previsao(); });
+  $('board').addEventListener('mouseleave', () => { if (G.mira) return; G.hover = null; $('tip').classList.add('hidden'); desenharDestaques(); previsao(); });
   $('board').addEventListener('contextmenu', e => { e.preventDefault(); cancelar(); });
-  $('board').addEventListener('click', e => {
-    SOM.init(); if (!G.st || G.busy || G.st.fim) return; const c = celulaDoEvento(e); if (!c) return;
+  $('board').addEventListener('click', e => { SOM.init(); const c = celulaDoEvento(e); if (c) cliqueNaCelula(c); });
+  function cliqueNaCelula(c, confirmado) {
+    if (!G.st || G.busy || G.st.fim) return;
     if (G.prep) return cliquePreparo(c);
     const st = G.st, u = R.atual(st); const o = R.unidadeEm(st, c.x, c.y);
     if (ehIA(u)) { if (o) { G.inspect = o.id; atualizarCartao(); } return; }
     const novoHover = !G.hover || G.hover.x !== c.x || G.hover.y !== c.y; if (novoHover) G.hover = c;
     const ops = G.ops; const s = G.sel || {};
-    // toque (celular): o 1º toque numa área só mostra a prévia; o 2º confirma
-    if (novoHover && ((s.modo === 'magia' && ['esfera', 'cubo', 'cone', 'linha'].includes(D.MAGIAS[s.magia].forma)) || (s.modo === 'hab' && s.hab === 'sopro'))) { desenharDestaques(); previsao(); return; }
+    // efeito em área: no toque (celular) o 1º toque só mira e mostra quem é atingido; o 2º no mesmo lugar lança.
+    // com mouse a prévia já aparece ao passar por cima, mas se a área pega aliados também pede o 2º clique.
+    const area = celulasDoEfeito(st, u, s, c, o);
+    if (area) {
+      const atingidos = area.map(p => R.unidadeEm(st, p.x, p.y)).filter(x => x && x.vivo !== false && x.pv > -999);
+      const aliados = atingidos.filter(x => x.lado === u.lado);
+      const chave = c.x + ',' + c.y; const armado = confirmado || (G.mira && G.mira.k === chave && G.mira.sel === G.sel);
+      if (!armado && (G.toque || aliados.length)) {
+        G.hover = c; G.mira = { k: chave, sel: G.sel, c }; desenharDestaques(); previsao(); mostrarMira(atingidos, aliados, u); return;
+      }
+      esconderMira();
+    } else if (novoHover && ((s.modo === 'magia' && ['esfera', 'cubo', 'cone', 'linha'].includes(D.MAGIAS[s.magia].forma)) || (s.modo === 'hab' && s.hab === 'sopro'))) { desenharDestaques(); previsao(); return; }
     if (!s.modo || s.modo === 'atacar' || s.modo === 'distancia') {
       if (o && o.lado !== u.lado && (s.modo !== 'distancia') && ops.atacar.includes(o.id)) return agir({ tipo: 'atacar', alvo: o.id, mods: u.lado === 'h' ? { ...G.mods } : {} });
       if (o && o.lado !== u.lado && ops.distancia.includes(o.id)) return agir({ tipo: 'distancia', alvo: o.id, mods: u.lado === 'h' ? { ...G.mods } : {} });
@@ -736,8 +775,8 @@
       if (s.hab === 'sopro' && !(c.x === u.x && c.y === u.y)) return agir({ tipo: 'habilidade', hab: 'sopro', ponto: c });
       if (['furia', 'inspiracao', 'baluarte'].includes(s.hab)) return usarHabSemAlvo();
     }
-  });
-  function cancelar() { if (G.sel) { G.sel = null; atualizarAcoes(); desenharDestaques(); previsao(); } }
+  }
+  function cancelar() { esconderMira(); if (G.sel) { G.sel = null; atualizarAcoes(); desenharDestaques(); previsao(); } }
   document.addEventListener('keydown', e => {
     if (!G.st || $('game').classList.contains('hidden')) return;
     if (e.key === 'Escape') cancelar();
@@ -753,7 +792,7 @@
     const r = R.executar(st, acao);
     if (!r.ok) { flutuar(u, r.erro, 'txt'); SOM.tocar('erro'); return; }
     G.undo = antes && st.turnoId === antes.turnoId ? antes : null;
-    G.busy = true; G.sel = null; G.mods = acao.tipo === 'mover' ? G.mods : {}; G.inspect = null; desenharDestaques();
+    esconderMira(); G.busy = true; G.sel = null; G.mods = acao.tipo === 'mover' ? G.mods : {}; G.inspect = null; desenharDestaques();
     $('acts').querySelectorAll('button').forEach(b => b.disabled = true);
     await tocar(r.ev, u.id); atualizarLog();
     G.busy = false; G.ops = null; atualizar(); fimOuSeguir();
