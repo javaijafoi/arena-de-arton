@@ -4,6 +4,7 @@
 (function (root) {
   'use strict';
   const D = (typeof module !== 'undefined' && module.exports) ? require('./data.js') : root.T20DATA;
+  const PODER = (typeof module !== 'undefined' && module.exports) ? require('./poderes.js') : root.T20PODERES;
   const { ALCANCE, CUSTO_CIRCULO, ARMAS, CLASSES, HEROIS, MAGIAS, CRIATURAS, MAPAS } = D;
   const COLS = 16, ROWS = 12;
 
@@ -24,15 +25,16 @@
     if (classe === 'bardo') return Math.min(4, Math.max(1, 1 + Math.floor((nivel - 2) / 4)));
     return Math.min(5, 1 + Math.floor((nivel - 1) / 4));
   }
-  function criarHeroi(hid, nivel, idx) {
-    const h = HEROIS.find(x => x.id === hid); const c = CLASSES[h.classe]; const a = c.attr;
+  // poderes: lista de poderes escolhidos (modo com poderes). Sem lista, vale a aproximação antiga (+1 a cada 4 níveis).
+  function criarHeroi(hid, nivel, idx, poderes) {
+    const h = HEROIS.find(x => x.id === hid); const c = CLASSES[h.classe]; const P = poderes ? PODER.contar(poderes) : null; const a = P ? PODER.atributos(c, P) : c.attr;
     const meio = Math.floor(nivel / 2), t = treino(nivel);
     const per = (k, atr) => meio + a[atr] + (c.treinadas.includes(k) ? t : 0);
     const pvMax = c.pv[0] + a.con + (nivel - 1) * Math.max(1, c.pv[1] + a.con);
     const pmMax = c.pm * nivel;
     // aprox.: poderes e itens que um herói ganha ao subir (equipamento melhor, poderes de combate)
     const def = 10 + (c.armaduraPesada ? 0 : a.des) + c.armadura + c.escudo + Math.floor((nivel - 1) / 2);
-    const poder = Math.floor(nivel / 4);
+    const poder = P ? 0 : Math.floor(nivel / 4);
     const arma = ARMAS[c.arma];
     const bonusItem = nivel >= 9 ? 2 : nivel >= 4 ? 1 : 0; // arma mágica/obra-prima conforme o nível
     const u = {
@@ -48,6 +50,7 @@
     if (h.classe === 'barbaro') u.rd = nivel >= 11 ? 6 : nivel >= 8 ? 4 : nivel >= 5 ? 2 : 0;
     if (h.classe === 'cavaleiro') u.rd = nivel >= 10 ? 4 : nivel >= 5 ? 2 : 0;
     if (h.classe === 'ladino') u.furtivo = [Math.ceil(nivel / 2), 6];
+    if (P) PODER.aplicar(u, c, nivel, P);
     return u;
   }
   function criarCriatura(cid, idx) {
@@ -154,8 +157,11 @@
   function causarDano(st, alvo, valor, tipo, ev, fonte) {
     if (!alvo.vivo) return 0;
     let v = Math.max(0, valor); const jaCaido = alvo.pv <= 0;
+    // Arcano de Batalha: a magia soma o atributo-chave uma vez em cada inimigo atingido
+    const arc = st._arcano; if (arc && v > 0 && alvo.lado !== arc.lado && !arc.ja.has(alvo.id)) { arc.ja.add(alvo.id); v += arc.v; }
     if (alvo.rd && tipo !== 'essência' && tipo !== 'luz') v = Math.max(0, v - alvo.rd);
     if (alvo.buff.furia && alvo.nivel >= 1 && tipo !== 'essência') v = Math.max(0, v - (alvo.buff.furiaRd || 0));
+    if (alvo.pvTemp > 0 && v > 0) { const t = Math.min(alvo.pvTemp, v); alvo.pvTemp -= t; v -= t; if (t) ev.push({ t: 'texto', id: alvo.id, txt: `–${t} PV temp.` }); }
     alvo.pv -= v;
     ev.push({ t: 'dano', id: alvo.id, v, tipo, pv: alvo.pv });
     if (v > 0 && tem(alvo, 'inconsciente') && alvo.cond.inconsciente.sono) { delete alvo.cond.inconsciente; ev.push({ t: 'texto', id: alvo.id, txt: 'acorda!' }); }
@@ -196,7 +202,7 @@
   /* ---------- batalha ---------- */
   function novaBatalha(cfg) {
     const st = { seed: cfg.seed >>> 0 || 12345, mapa: { ...MAPAS[cfg.mapa], id: cfg.mapa }, unidades: [], ordem: [], vez: 0, rodada: 1, log: [], fim: null, teia: [], turnoId: 0, cfg: { ...cfg } };
-    cfg.herois.forEach((h, i) => st.unidades.push(criarHeroi(h, cfg.nivel, i)));
+    cfg.herois.forEach((h, i) => { const u = criarHeroi(h, cfg.nivel, i, cfg.poderes && cfg.poderes[i] || undefined); if (cfg.merc === i) { u.merc = true; u.nome += ' (mercenário)'; } st.unidades.push(u); });
     cfg.inimigos.forEach((m, i) => st.unidades.push(criarCriatura(m, i)));
     posicionarHerois(st);
     posicionar(st, st.unidades.filter(u => u.lado === 'm'), [13, 12, 14, 11, 15]);
@@ -347,7 +353,8 @@
     if (u.lado === 'h') {
       const a = u.arma; if (!!a.distancia !== !!distancia) return null;
       const base = (a.distancia ? u.per.pont : u.per.luta) + a.bonusItem + (a.bonusAtaque || 0);
-      const forDano = a.distancia ? 0 : u.attr.for + (a.duasMaos ? Math.floor(u.attr.for / 2) : 0);
+      const atrD = a.acuidade ? Math.max(u.attr.for, u.attr.des) : u.attr.for;
+      const forDano = a.distancia ? 0 : atrD + (a.duasMaos ? Math.floor(atrD / 2) : 0);
       return [{ nome: a.nome, bonus: base, dano: [a.dano[0], a.dano[1], forDano + a.bonusItem + (u.bonusDano || 0)], margem: a.margem, mult: a.mult, tipo: a.tipo, alcance: a.alcance, extra: a.extra || null }];
     }
     if (distancia) return u.distancia ? [{ ...u.distancia }] : null;
@@ -370,7 +377,15 @@
     if (at.buff.desafio && at.buff.desafio === alvo.id) { bonus += 2; mods.push('desafio +2'); }
     if (at.cond.desafiado && at.cond.desafiado.por !== alvo.id && st.unidades.some(o => o.id === at.cond.desafiado.por && o.vivo && !incapaz(o))) { bonus -= 2; mods.push('desafiado –2'); }
     if (perfil.frenesi && alvo.pv < alvo.pvMax) { bonus += 2; mods.push('frenesi +2'); }
+    const pd = at.poderes || {};
+    if (pd.valentao && (ctx.flanco || tem(alvo, 'caido') || desprevenido(alvo, at))) { bonus += 2; mods.push('valentão +2'); ctx.valentao = true; }
+    if (pd.esgrimaMagica && at.buff.inspiracao && !ctx.distancia) { const g = at.attr.car - Math.max(at.attr.for, at.arma && at.arma.acuidade ? at.attr.des : -9); if (g > 0) { bonus += g; mods.push('esgrima mágica +' + g); } }
     const defo = defesa(st, alvo, at, tipo, { cobertura: ctx.cobertura });
+    // Ataque Poderoso: –2 no ataque, +5 no dano, só quando a troca compensa
+    if (pd.ataquePoderoso && !ctx.distancia) {
+      const ch = b => Math.max(0.05, Math.min(0.95, (21 - (defo.valor - b)) / 20)); const med = perfil.dano[0] * (perfil.dano[1] + 1) / 2 + (perfil.dano[2] || 0);
+      if (ch(bonus - 2) * (med + 5) > ch(bonus) * med) { bonus -= 2; mods.push('ataque poderoso –2'); ctx.ap = true; }
+    }
     return { bonus, mods, defo };
   }
   // previsão para a interface: chance de acerto e faixa de dano de cada golpe
@@ -384,9 +399,9 @@
       const c = { ...ctx }; const b = bonusAtaque(st, at, alvo, p, c);
       const precisa = b.defo.valor - b.bonus; const chance = Math.max(5, Math.min(95, (21 - precisa) * 5));
       let min = p.dano[0] + (p.dano[2] || 0), max = p.dano[0] * p.dano[1] + (p.dano[2] || 0);
-      const fixo = (opt.aeDano ? 4 * opt.aeDano : 0) + (at.buff.furia && !isDist ? at.buff.furia : 0) + (at.buff.bencao || 0) + (at.buff.oracao || 0) + (at.buff.inspiracao || 0) - (at.buff.perdicao || 0);
+      const fixo = (opt.aeDano ? 4 * opt.aeDano : 0) + (at.buff.furia && !isDist ? at.buff.furia : 0) + (at.buff.bencao || 0) + (at.buff.oracao || 0) + (at.buff.inspiracao || 0) - (at.buff.perdicao || 0) + (c.ap ? 5 : 0) + (c.valentao ? 2 : 0);
       min += fixo; max += fixo;
-      if (opt.golpeDivino) { min += opt.golpeDivino; max += 8 * opt.golpeDivino; }
+      if (opt.golpeDivino) { min += opt.golpeDivino; max += ((at.poderes || {}).armaSagrada ? 12 : 8) * opt.golpeDivino; }
       if (p.extra) { min += p.extra[0]; max += p.extra[0] * p.extra[1]; }
       if (at.buff.marca && at.buff.marca.alvo === alvo.id) { min += at.buff.marca.dados[0]; max += at.buff.marca.dados[0] * at.buff.marca.dados[1]; }
       const furt = at.furtivo && (c.flanco || desprevenido(alvo, at)) && (!isDist || dist(at, alvo) <= 6);
@@ -399,7 +414,8 @@
     const r = d(st, 20), total = r + bonus;
     let acerto = r === 20 || (r !== 1 && total >= defo.valor);
     if (acerto && tem(at, 'cego') && d(st, 100) <= 50) { acerto = false; mods.push('cego: 50% de falha'); }
-    const critico = acerto && r >= (perfil.margem || 20);
+    const pd = at.poderes || {}; const marcado = at.buff.marca && at.buff.marca.alvo === alvo.id;
+    const critico = acerto && r >= (perfil.margem || 20) - (pd.pontoFraco && marcado ? 2 : 0);
     const evA = { t: 'ataque', de: at.id, para: alvo.id, nome: perfil.nome, r, bonus, total, def: defo.valor, acerto, critico, distancia: !!ctx.distancia, oportunidade: !!ctx.oportunidade, mods: mods.concat(defo.mods) };
     ev.push(evA);
     const txtMods = evA.mods.length ? ` [${evA.mods.join(', ')}]` : '';
@@ -407,12 +423,21 @@
     if (!acerto) { st.log.push(`${at.nome} → ${alvo.nome} (${perfil.nome}): ${r}+${bonus}=${total} vs Def ${defo.valor} — errou${r === 1 ? ' (1 natural)' : ''}.${txtMods}`); contraArma(st, at, alvo, ctx, ev); return 0; }
     // dano
     let dados = rolar(st, perfil.dano[0] * (critico ? (perfil.mult || 2) : 1), perfil.dano[1]);
+    if (pd.destruidor && !ctx.distancia && at.arma && at.arma.duasMaos) dados = dados.map(v => v <= 2 ? d(st, perfil.dano[1]) : v);
     let dano = soma(dados) + (perfil.dano[2] || 0); const partes = [`${perfil.dano[0]}d${perfil.dano[1]}${critico ? '×' + (perfil.mult || 2) : ''}`];
+    if (ctx.ap) { dano += 5; partes.push('+5 ataque poderoso'); }
+    if (ctx.valentao) { dano += 2; partes.push('+2 valentão'); }
+    // Golpe Poderoso (bárbaro): 1 PM por um dado extra da arma, guardando PM para a fúria
+    if (pd.golpePoderoso && !ctx.distancia && at.lado === 'h' && at.pm >= (at.buff.furia ? 1 : 3)) { at.pm -= 1; ev.push({ t: 'pm', id: at.id, v: -1 }); dano += soma(rolar(st, perfil.dano[0], perfil.dano[1])); partes.push(`${perfil.dano[0]}d${perfil.dano[1]} golpe poderoso`); }
     if (ctx.aeDano) { dano += ctx.aeDano; partes.push('+' + ctx.aeDano + ' especial'); }
     if (at.buff.furia && !ctx.distancia) dano += at.buff.furia;
     const gd = bonusTeste(at); const bonusDano = (at.buff.bencao || 0) + (at.buff.oracao || 0) + (at.buff.inspiracao || 0) - (at.buff.perdicao || 0); dano += bonusDano; void gd;
     let extra = 0;
-    if (ctx.golpeDivino) { extra += soma(rolar(st, ctx.golpeDivino, 8)); partes.push(ctx.golpeDivino + 'd8 luz'); }
+    if (ctx.golpeDivino) { const f = pd.armaSagrada ? 12 : 8; extra += soma(rolar(st, ctx.golpeDivino, f)); partes.push(ctx.golpeDivino + 'd' + f + ' luz'); }
+    if (at.buff.inspiracao && !ctx.distancia) {
+      if (pd.golpeElemental && at.pm >= 3) { at.pm -= 1; ev.push({ t: 'pm', id: at.id, v: -1 }); extra += d(st, 6); partes.push('1d6 golpe elemental'); }
+      if (pd.golpeMagico && (at.pmGanho || 0) < at.nivel) { const g = Math.min(2, at.nivel - (at.pmGanho || 0)); at.pmGanho = (at.pmGanho || 0) + g; at.pm += g; ev.push({ t: 'pm', id: at.id, v: g }); }
+    }
     if (at.furtivo && (ctx.flanco || desprevenido(alvo, at)) && (!ctx.distancia || dist(at, alvo) <= 6)) {
       const fx = soma(rolar(st, at.furtivo[0], at.furtivo[1])); extra += fx; partes.push(at.furtivo[0] + 'd6 furtivo'); ev.push({ t: 'texto', id: alvo.id, txt: 'furtivo!' });
     }
@@ -506,6 +531,7 @@
   /* ---------- custo de magia ---------- */
   function custoMagia(u, mid, aprim) {
     const M = MAGIAS[mid]; let c = M.custoFixo || CUSTO_CIRCULO[M.circulo]; const erros = [];
+    if (u.focoMagia && u.focoMagia.includes(mid)) c = Math.max(1, c - 1);
     for (const a of M.aprim || []) { const n = aprim && aprim[a.id] || 0; if (!n) continue; if (a.circulo && a.circulo > u.circulo) erros.push(`${a.nome} exige ${a.circulo}º círculo`); c += a.custo * n; }
     if (u.lado === 'h' && c > u.nivel) erros.push(`limite de PM por magia é ${u.nivel} (seu nível)`);
     if (c > u.pm) erros.push('PM insuficiente');
@@ -759,7 +785,7 @@
     const aprTxt = Object.entries(aprim).filter(([, n]) => n).map(([k, n]) => { const a = M.aprim.find(x => x.id === k); return a ? a.nome + (n > 1 ? ' ×' + n : '') : k; });
     st.log.push(`✨ ${u.nome} lança ${M.nome} (${cm.custo} PM${aprTxt.length ? '; ' + aprTxt.join(', ') : ''}).`);
     ev.push({ t: 'magia', id: u.id, magia: acao.magia, fx: M.fx, cor: M.cor, alvos: alvos.map(a => a.id), celulas: cel, ponto: acao.ponto || null });
-    const cd = u.cd + (u.buff.oracao > 0 ? 0 : 0);
+    const cd = u.cd + ((u.poderes || {}).arteMagica && u.buff.inspiracao ? 2 : 0);
     const n = k => aprim[k] || 0;
     const res = (o, teste) => resistencia(st, o, teste, cd - (teste === 'fort' && acao.magia === 'toqueChocante' && o.lado === 'h' && ['guerreiro', 'paladino', 'clerigo'].includes(o.classe) ? 5 : 0), ev);
     const ndOk = (o, base) => { let lim = base; if (n('nd5')) lim = 5; if (n('nd10')) lim = 10; return (o.lado === 'h' ? o.nivel : o.nd) <= lim; };
@@ -770,7 +796,8 @@
       causarDano(st, o, v, tipo, ev); return ok;
     };
     const antes = new Map(st.unidades.map(o => [o, o.pv]));
-    efeitoMagia(st, u, acao, alvos, cel, n, res, ndOk, morto, danoArea, ev);
+    if (u.arcanoBatalha) st._arcano = { lado: u.lado, v: u.arcanoBatalha, ja: new Set() };
+    try { efeitoMagia(st, u, acao, alvos, cel, n, res, ndOk, morto, danoArea, ev); } finally { st._arcano = null; }
     resumoPV(st, antes);
     return null;
   }
@@ -869,6 +896,7 @@
     if (h === 'furia') {
       if (u.buff.furia) return 'Já está em fúria.'; const extra = Math.min(acao.extra || 0, Math.floor(u.nivel / 5)); const custo = 2 + extra;
       if (u.pm < custo) return 'PM insuficiente.'; u.pm -= custo; u.buff.furia = 2 + extra; u.buff.furiaRd = 0;
+      if ((u.poderes || {}).almaBronze) { u.pvTemp = (u.pvTemp || 0) + u.nivel + u.attr.for; ev.push({ t: 'texto', id: u.id, txt: `+${u.nivel + u.attr.for} PV temp.` }); }
       ev.push({ t: 'pm', id: u.id, v: -custo }); ev.push({ t: 'fx', fx: 'furia', de: u.id }); ev.push({ t: 'texto', id: u.id, txt: 'FÚRIA!' }); st.log.push(`🔥 ${u.nome} entra em fúria (+${u.buff.furia} ataque e dano).`); return null;
     }
     if (h === 'curaMaos') {

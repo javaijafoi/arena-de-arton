@@ -376,7 +376,7 @@
     const cur = R.atual(G.st); for (const id in G.toks) G.toks[id].classList.toggle('act', !!cur && id === cur.id && !G.st.fim);
     atualizarOrdem(); atualizarCartao(); atualizarAcoes(); atualizarLog(); desenharDestaques(); previsao();
   }
-  const ehIA = u => u && (u.lado === 'm' ? G.ia.m : G.ia.h);
+  const ehIA = u => u && (u.lado === 'm' ? G.ia.m : (u.merc || G.ia.h)); // o mercenário da run sempre joga sozinho
   function atualizarOrdem() {
     const st = G.st; const o = $('order'); const n = st.ordem.length; let html = `<div class="rd">RODADA<b>${st.rodada}</b></div>`;
     for (let k = 0; k < n; k++) {
@@ -395,7 +395,9 @@
     let linhas = '';
     if (u.lado === 'h') {
       const a = u.arma; linhas = `${a.nome}: ${a.distancia ? 'Pontaria' : 'Luta'} +${(a.distancia ? u.per.pont : u.per.luta) + a.bonusItem}, ${a.dano[0]}d${a.dano[1]}${R.perfisDeAtaque(u, !!a.distancia)[0].dano[2] ? '+' + R.perfisDeAtaque(u, !!a.distancia)[0].dano[2] : ''}, crítico ${a.margem}/×${a.mult}.`;
-      const habs = (u.habilidades || []).map(h => D.HABILIDADES[h].nome); if (habs.length) linhas += `<br><b>Poderes:</b> ${habs.join(', ')}.`;
+      const habs = (u.habilidades || []).map(h => D.HABILIDADES[h].nome); if (habs.length) linhas += `<br><b>Habilidades:</b> ${habs.join(', ')}.`;
+      const pods = Object.keys(u.poderes || {}).map(k => window.T20PODERES.PODERES[k].nome.replace('Aumento de Atributo', '+1')); if (pods.length) linhas += `<br><b>Poderes:</b> ${pods.join(', ')}.`;
+      if (u.merc) linhas += '<br><b>Mercenário:</b> jogado pela IA.';
       if (u.magias.length) linhas += `<br><b>Magias (${u.circulo}º círculo, CD ${u.cd}):</b> ${u.magias.map(m => D.MAGIAS[m].nome).join(', ')}.`;
     } else {
       linhas = u.ataques.map(a => `${a.nome} +${a.bonus} (${a.dano[0]}d${a.dano[1]}+${a.dano[2]})`).join(', ') + (u.ataques.length > 1 ? ' — todos na mesma ação.' : '.');
