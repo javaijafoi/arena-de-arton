@@ -15,6 +15,16 @@
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const clique = () => { try { SOM.init(); SOM.tocar('clique'); } catch (e) { /* ok */ } };
   const ICON = { inicio: '🏁', batalha: '⚔', elite: '💀', loja: '🛒', descanso: '🔥', evento: '?', taverna: '🍺', chefe: '👑' };
+  /* ícones do mapa desenhados em pixel (12×12), estilo medieval */
+  const PXI_COR = { k: '#1a1322', c: '#f1e2b0', w: '#eef2f7', g: '#ffc83d', y: '#ffe066', o: '#ff8a2a', r: '#d23a2a', b: '#8a5226' };
+  const PXI = {"batalha":["w..........w","ww........ww",".ww......ww.","..ww....ww..","...ww..ww...","....wwww....","....wwww....","...gw..wg...","..gg....gg..",".bk......kb.","bb........bb"],"elite":["...kkkkkk...","..kcccccck..",".kcccccccck.",".kckkcckkck.",".kckkcckkck.",".kccckkccck.","..kccccccck.","...kckckck..","...kkkkkkk.."],"loja":["....kkkk....","..kkrrcckk..",".krrccrrcck.","krrccrrccrrk","kkkkkkkkkkkk",".kb......bk.",".kb.gg.o.bk.",".kbkkkkkkbk.",".kbbbbbbbbk.",".kb......bk."],"descanso":[".....o......","....oy.o....","...oyyo.o...","...oyyyoo...","..oyywyyo...","..oyywwyoo..","...oyyyyo...",".bk.oooo.kb.","..bbk..kbb..",".kbbbbbbbbk."],"evento":[".kkkkkkkkkk.","kbcccccccbbk",".kccrrrrcck.",".kcrrccrrck.",".kccccrrcck.",".kcccrrccck.",".kcccrrccck.",".kcccccccck.",".kcccrrccck.","kbcccccccbbk",".kkkkkkkkkk."],"chefe":[".k...kk...k.","kgk.kggk.kgk","kgkkggggkkgk","kggggrrggggk","kgggrrrrgggk","kggggrrggggk","kkkkkkkkkkkk","kyyyyyyyyyyk","kkkkkkkkkkkk"],"taverna":["..cccccc....",".cwcccwcc...",".kkkkkkkk...",".kyyyyyyk...",".kyoyyoykkk.",".kyyyyyyk.k.",".kyoyyoyk.k.",".kyyyyyykkk.",".kkkkkkkk..."],"inicio":[".kk.........",".kbkkkkkk...",".kbrrrrrrk..",".kbrrggrrrk.",".kbrrggrrk..",".kbrrrrrrrk.",".kbkkkkkkk..",".kb.........",".kb.........","kkkk........"]};
+  function pxi(tipo) {
+    const g = PXI[tipo]; if (!g) return ICON[tipo] || '';
+    let sombra = '', cor = '';
+    g.forEach((linha, y) => { for (let x = 0; x < linha.length; x++) { const ch = linha[x]; if (ch === '.') continue; sombra += `<rect x="${x + 1}" y="${y + 1}" width="1" height="1"/>`; cor += `<rect x="${x}" y="${y}" width="1" height="1" fill="${PXI_COR[ch]}"/>`; } });
+    const off = (12 - g.length) / 2;
+    return `<svg class="pxi" viewBox="-1 ${-1 - off} 14 14" shape-rendering="crispEdges" aria-hidden="true"><g fill="#000" opacity=".55">${sombra}</g>${cor}</svg>`;
+  }
   const NOME_TIPO = { inicio: 'Partida', batalha: 'Batalha', elite: 'Elite', loja: 'Loja', descanso: 'Fogueira', evento: 'Evento', taverna: 'Taverna', chefe: 'Chefe do andar' };
 
   /* ---------- casca: uma seção #run com uma tela por vez ---------- */
@@ -249,7 +259,7 @@
       const st = n.id === run.atual ? 'atual feito' : cam.has(n.id) ? 'feito' : ids.has(n.id) ? (S.sel != null && S.sel !== n.id ? 'pode outro' : 'pode') : n.c <= cAtual ? 'passado' : alc.has(n.id) ? 'futuro' : 'futuro longe';
       const tipo = n.tipo === 'evento' && n.visitado ? 'evento' : n.tipo;
       const rosto = (ids.has(n.id) || n.tipo === 'chefe' || cam.has(n.id)) ? rostoDoNo(run, n) : null;
-      const dentro = rosto ? face(rosto) : (tipo === 'evento' ? '?' : ICON[tipo]);
+      const dentro = rosto ? face(rosto) : pxi(tipo);
       const rot = n.tipo === 'chefe' ? esc(n.nome || 'Chefe') : (ids.has(n.id) || n.id === S.sel) ? esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo]) : n.tipo === 'inicio' ? 'Ruínas de Tyrondir' : '';
       nos += `<div class="nd ${st}${n.tipo === 'chefe' ? ' chefe' : ''}${S.sel === n.id ? ' sel' : ''}" style="left:${p.x}%;top:${p.y}%"><button class="f" data-no="${n.id}" style="--c:${COR_NO[tipo] || '#555'}" aria-label="${esc(NOME_TIPO[tipo] || tipo)}">${dentro}</button>${rot ? `<span class="l">${rot}</span>` : ''}</div>`;
     }
@@ -259,7 +269,7 @@
     // painel do nó
     const sel = S.sel != null ? run.mapa.nos[S.sel] : null;
     let pn = '<div class="scroll pm-info">';
-    if (prox.length) pn += `<div class="pm-prox"><small class="tag" style="color:#7a5a1a">PARA ONDE?</small>${prox.map(n => { const t = n.tipo === 'evento' && n.visitado ? 'evento' : n.tipo; return `<button class="pp${S.sel === n.id ? ' on' : ''}" data-no="${n.id}" style="--c:${COR_NO[t] || '#555'}"><i>${t === 'evento' ? '?' : ICON[t]}</i><span>${esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo])}</span></button>`; }).join('')}</div>`;
+    if (prox.length) pn += `<div class="pm-prox"><small class="tag" style="color:#7a5a1a">PARA ONDE?</small>${prox.map(n => { const t = n.tipo === 'evento' && n.visitado ? 'evento' : n.tipo; return `<button class="pp${S.sel === n.id ? ' on' : ''}" data-no="${n.id}" style="--c:${COR_NO[t] || '#555'}"><i>${pxi(t)}</i><span>${esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo])}</span></button>`; }).join('')}</div>`;
     if (sel) {
       if (['batalha', 'elite', 'chefe'].includes(sel.tipo)) {
         const g = RUN.inimigosDoNo(run, sel); const tema = RUN.TEMAS.find(t => t.id === sel.tema); const rosto = rostoDoNo(run, sel);
@@ -268,7 +278,7 @@
         if (sel.tipo === 'elite') pn += '<p class="mut">Mais forte, mas sempre deixa um item mágico.</p>';
         if (sel.tipo === 'chefe') pn += '<p class="mut">Chefe Final: PV dobrados e redução de dano 5. Vencer encerra a run com vitória.</p>';
       } else {
-        const ic = sel.tipo === 'evento' ? '?' : ICON[sel.tipo];
+        const ic = pxi(sel.tipo);
         const txt = sel.tipo === 'evento' ? ['Algo na estrada…', 'Pode ser uma taverna, um altar, um tesouro com armadilha, alguém precisando de ajuda ou uma emboscada. Os testes usam a melhor perícia do grupo.']
           : sel.tipo === 'loja' ? [sel.nome, 'Poções, comida, barraca e algumas armas e armaduras superiores. Compra itens comuns pela metade do preço.']
           : [sel.nome, 'Descanso rápido (ração) ou longo (ração + barraca, recupera tudo).'];
@@ -277,7 +287,7 @@
       pn += `<button class="btn gold bbig" id="mIr">${sel.tipo === 'chefe' ? '👑 Enfrentar o chefe' : ['batalha', 'elite'].includes(sel.tipo) ? 'Viajar e lutar ▶' : 'Viajar ▶'}</button>`;
     } else {
       pn += `<span class="face-px big" style="display:grid;place-items:center;font-size:40px;background:var(--par3);border-color:var(--par2)">🧭</span><h3>Escolha o caminho</h3><p>Toque num dos nós que piscam para ver o que há lá. Mais batalhas dão mais XP e ouro; fogueiras e eventos ajudam a recuperar.</p>
-        <div class="pm-leg">${['batalha', 'elite', 'loja', 'descanso', 'evento', 'chefe'].map(t => `<span><b style="--c:${COR_NO[t]}">${t === 'evento' ? '?' : ICON[t]}</b>${NOME_TIPO[t]}</span>`).join('')}</div>`;
+        <div class="pm-leg">${['batalha', 'elite', 'loja', 'descanso', 'evento', 'chefe'].map(t => `<span><b style="--c:${COR_NO[t]}">${pxi(t)}</b>${NOME_TIPO[t]}</span>`).join('')}</div>`;
     }
     const rapido = RUN.opcoesDescanso(run, null)[0];
     pn += `<div class="acamp"><button class="btn sm" id="mRap" ${rapido.pode ? '' : 'disabled'} title="${esc(rapido.desc)}">🍖 Acampar aqui (${rapido.custo})</button> <button class="btn red sm" id="mDesistir">Desistir</button></div></div>`;
