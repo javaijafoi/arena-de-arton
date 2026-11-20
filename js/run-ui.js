@@ -141,7 +141,7 @@
   }
   function telaPre() {
     const m = S.meta; const ouro = 150 + (RUN.tem(m, 'bolsaRica') ? 100 : 0);
-    S.pre = S.pre || { grupo: grupoAleatorio(3), compras: { racao: 0, pocao: 0, barraca: 0, oleo: 0 }, bau: [] };
+    S.pre = S.pre || { grupo: grupoAleatorio(4), compras: { racao: 0, pocao: 0, barraca: 0, oleo: 0 }, bau: [] };
     const P = S.pre; const PRECOS = { racao: I('racao').preco, pocao: I('pocao').preco, barraca: I('barraca').preco, oleo: I('oleo').preco };
     const gasto = Object.entries(P.compras).reduce((a, [k, v]) => a + v * PRECOS[k], 0); const resta = ouro - gasto;
     if (!P.ver || !H(P.ver)) P.ver = P.grupo[0] || D.HEROIS[0].id;
