@@ -168,3 +168,10 @@ svg.mapa line.feito{stroke:var(--gold);stroke-width:6;stroke-dasharray:none}
 .lnk{background:none;border:0;padding:0;color:var(--blue);font-weight:800;text-decoration:underline;text-underline-offset:3px}
 .codigo{font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#0b1430;border:2px solid #f4f1ea44;border-radius:8px;padding:10px;margin:6px 0 10px;user-select:all}
 .inp{width:100%;font:600 14px ui-monospace,Menlo,monospace;color:var(--ink);background:#0b1430;border:2px solid #f4f1ea66;border-radius:8px;padding:10px;margin:6px 0 10px}
+/* poderes pendentes e mercenário */
+.pc .f{position:relative}
+.pc .f .pend{position:absolute;right:-6px;top:-8px;font:700 13px/1 sans-serif;color:#ffc83d;text-shadow:0 0 3px #000,0 0 3px #000}
+.pc.merc{opacity:.92;border-style:dashed}
+.merc-box{margin:12px 0;text-align:left}
+#run h4{margin:12px 0 6px;font-size:15px;opacity:.85}
+.pm-pod{margin-bottom:10px}.pm-pod .btn{width:100%}

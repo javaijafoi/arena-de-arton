@@ -7,6 +7,7 @@
   const D = node ? require('./data.js') : root.T20DATA;
   if (node) require('./bestiario.js'); // soma as criaturas dos andares 2 a 5 em D.CRIATURAS
   const R = node ? require('./rules.js') : root.T20;
+  const PODER = node ? require('./poderes.js') : root.T20PODERES;
 
   /* ---------- dado semeado da run ---------- */
   function rnd(o) {
@@ -233,7 +234,8 @@
     const seed = (cfg.seed >>> 0) || ((Math.random() * 1e9) | 0);
     const run = {
       v: 1, seed, sorte: { seed: seed ^ 0x5bd1e995 }, andar: 1, xp: 0, nivel: 1, ouro: cfg.ouro != null ? cfg.ouro : 150,
-      herois: cfg.herois.slice(0, 4).map(hid => ({ hid, dano: 0, pmGasto: 0, morto: false, equip: { arma: null, armadura: null, acessorio: null }, cinto: ['pocao', null, null], pvTreino: (cfg.treino && cfg.treino[(D.HEROIS.find(x => x.id === hid) || {}).classe]) * PV_TREINO || 0 })),
+      herois: cfg.herois.slice(0, 4).map(hid => ({ hid, dano: 0, pmGasto: 0, morto: false, equip: { arma: null, armadura: null, acessorio: null }, cinto: ['pocao', null, null], pvTreino: (cfg.treino && cfg.treino[(D.HEROIS.find(x => x.id === hid) || {}).classe]) * PV_TREINO || 0, ...(cfg.semPoderes ? {} : { poderes: [], pend: 0 }) })),
+      merc: null,
       bolsa: { racao: 4, barraca: 0, corda: 0 }, mochila: [],
       mapa: null, atual: 0, caminho: [0], log: [], fim: null, pendente: null,
       stats: { batalhas: 0, elites: 0, abates: 0, xp: 0, ouroGanho: 0, mortes: 0, rodadas: 0 },
@@ -242,6 +244,7 @@
     if (run.nivelInicial > 1) { run.xp = XP_NIVEL[run.nivelInicial]; run.nivel = run.nivelInicial; }
     // começar num andar mais fundo (simulador e testes): o grupo chega no nível do teto do andar anterior
     if (cfg.andar > 1) { run.andar = Math.min(ULTIMO_ANDAR, cfg.andar); run.nivel = ANDARES[run.andar - 1].teto; run.xp = XP_NIVEL[run.nivel]; run.nivelInicial = run.nivel; }
+    for (const h of run.herois) if (h.poderes) h.pend = run.nivel - 1; // começando acima do 1º nível: os poderes atrasados ficam para escolher
     for (const it of cfg.itens || []) darItem(run, it);
     run.mapa = gerarMapa(run.sorte);
     for (const n of run.mapa.nos) prepararNo(run, n);
@@ -311,21 +314,22 @@
       if (ef.con) { u.attr.con += ef.con; u.per.fort += ef.con; u.pvMax += ef.con * nivel; u.pv += ef.con * nivel; }
     }
   }
-  function unidadeHeroi(h, nivel, idx) { const u = R.criarHeroi(h.hid, nivel, idx); aplicarItens(u, h, nivel); return u; }
+  function unidadeHeroi(h, nivel, idx) { const u = R.criarHeroi(h.hid, nivel, idx, h.poderes); aplicarItens(u, h, nivel); return u; }
   function pvMaxDe(h, nivel) { return unidadeHeroi(h, nivel, 0).pvMax; }
   function pmMaxDe(h, nivel) { return unidadeHeroi(h, nivel, 0).pmMax; }
 
   function prepararBatalha(run, n) {
     n = n || noAtual(run);
-    const g = inimigosDoNo(run, n); const grupo = vivos(run);
-    const cfg = { herois: grupo.map(h => h.hid), nivel: run.nivel, inimigos: g.ids, mapa: n.mapaId, seed: (run.seed ^ (n.id * 7919) ^ (run.stats.batalhas * 104729) ^ ((run.andar || 1) * 31337)) >>> 0, run: true };
+    const g = inimigosDoNo(run, n); const grupo = vivos(run).concat(run.merc ? [run.merc] : []);
+    if (run.merc) atualizarMerc(run);
+    const cfg = { herois: grupo.map(h => h.hid), poderes: grupo.map(h => h.poderes || null), merc: run.merc ? grupo.length - 1 : -1, nivel: run.nivel, inimigos: g.ids, mapa: n.mapaId, seed: (run.seed ^ (n.id * 7919) ^ (run.stats.batalhas * 104729) ^ ((run.andar || 1) * 31337)) >>> 0, run: true };
     return { cfg, grupo, chefe: g.chefe || null, nd: g.nd };
   }
   // chamado logo depois de R.novaBatalha: ajusta heróis e o chefe
   function ajustarBatalha(run, st, prep) {
     const hs = st.unidades.filter(u => u.lado === 'h');
     hs.forEach((u, i) => {
-      const h = prep.grupo[i]; u.runIdx = run.herois.indexOf(h);
+      const h = prep.grupo[i]; u.runIdx = h.merc ? -1 : run.herois.indexOf(h);
       aplicarItens(u, h, run.nivel);
       u.pv = Math.max(1, u.pvMax - h.dano); u.pm = Math.max(0, u.pmMax - h.pmGasto);
       u.cinto = h.cinto.slice();
@@ -343,12 +347,16 @@
     run.stats.batalhas++; run.stats.rodadas += st.rodada;
     run.stats.abates += st.unidades.filter(u => u.lado === 'm' && !u.vivo).length;
     for (const u of st.unidades.filter(x => x.lado === 'h')) {
+      if (u.runIdx < 0) { // mercenário: se cai, vai embora (dá para contratar outro)
+        if (!u.vivo || !venceu) { res.mortos.push(u.nome); run.log.push(`☠ ${u.nome} cai em combate.`); run.merc = null; continue; }
+        run.merc.dano = u.pvMax - Math.max(1, u.pv); run.merc.pmGasto = Math.max(0, u.pmMax - u.pm); continue;
+      }
       const h = run.herois[u.runIdx];
       h.cinto = u.cinto.slice();
       if (!u.vivo) { h.morto = true; h.dano = 0; h.pmGasto = 0; res.mortos.push(u.nome); run.stats.mortes++; continue; }
       if (!venceu) { h.morto = true; res.mortos.push(u.nome); run.stats.mortes++; continue; } // grupo caído: inimigos acabam com os desmaiados
       const pv = Math.max(1, u.pv); // desmaiado levanta com 1 PV se o grupo vencer
-      h.dano = u.pvMax - pv; h.pmGasto = u.pmMax - u.pm;
+      h.dano = u.pvMax - pv; h.pmGasto = Math.max(0, u.pmMax - u.pm);
     }
     if (!venceu) { run.fim = 'derrota'; run.log.push(`💀 O grupo caiu em ${n.nome}.`); return res; }
     // XP: ND × 1.000 dividido pelo tamanho do grupo (heróis que começaram a run)
@@ -360,7 +368,7 @@
     // vencer o chefe garante o teto: o grupo começa o próximo andar no nível certo
     if (n.tipo === 'chefe' && run.xp < XP_NIVEL[teto]) run.xp = XP_NIVEL[teto];
     run.nivel = Math.min(teto, nivelDoXP(run.xp));
-    if (run.nivel > antes) res.subiu = { de: antes, para: run.nivel };
+    if (run.nivel > antes) { res.subiu = { de: antes, para: run.nivel }; for (const h of run.herois) if (h.poderes) h.pend = (h.pend || 0) + run.nivel - antes; }
     // tesouro: proporcional ao ND (aprox. da tabela de tesouro do livro, mais baixa no andar 1)
     const o = run.sorte;
     // acima do ND 4 o tesouro cresce mais rápido (como a tabela do livro), para os itens mágicos da loja caberem no bolso
@@ -441,7 +449,7 @@
   function descansar(run, tipo, n) {
     const op = opcoesDescanso(run, n).find(o => o.id === tipo); if (!op || !op.pode) return 'Não dá para descansar assim.';
     if (tipo === 'quarto') run.ouro -= 90; else run.bolsa.racao -= racoesNecessarias(run);
-    for (const h of vivos(run)) {
+    for (const h of vivos(run).concat(run.merc ? [run.merc] : [])) {
       if (tipo === 'rapido') { h.dano = Math.floor(h.dano / 2); h.pmGasto = Math.floor(h.pmGasto / 2); } else { h.dano = 0; h.pmGasto = 0; }
     }
     if (n) n.descansou = true;
@@ -581,11 +589,45 @@
   function proximoAndar(run) {
     if (!run.proxAndar || run.andar >= ULTIMO_ANDAR) return 'Ainda não.';
     run.andar++; run.proxAndar = false; run.pendente = null;
-    for (const h of vivos(run)) { h.dano = 0; h.pmGasto = 0; }
+    for (const h of vivos(run).concat(run.merc ? [run.merc] : [])) { h.dano = 0; h.pmGasto = 0; }
     run.mapa = gerarMapa(run.sorte); run.atual = 0; run.caminho = [0];
     for (const n of run.mapa.nos) prepararNo(run, n);
     run.log.push(`🗺 Andar ${run.andar}: ${ANDARES[run.andar].nome}.`);
     return null;
+  }
+
+  /* ---------- poderes ao subir de nível (um por nível a partir do 2º) ---------- */
+  function poderesDisponiveis(run, hi) { const h = run.herois[hi]; return h && h.poderes ? PODER.disponiveis(h.hid, run.nivel, h.poderes) : []; }
+  function escolherPoder(run, hi, id) {
+    const h = run.herois[hi]; if (!h || !h.poderes) return 'Sem poderes neste modo.';
+    if (!(h.pend > 0)) return 'Nenhum poder para escolher agora.';
+    if (!PODER.pode(h.hid, run.nivel, h.poderes, id)) return 'Este poder não está disponível.';
+    const pvA = pvMaxDe(h, run.nivel); h.poderes.push(id); h.pend--;
+    const pvB = pvMaxDe(h, run.nivel); if (pvB < pvA) h.dano = Math.max(0, h.dano - (pvA - pvB)); // (nenhum poder tira PV hoje)
+    return null;
+  }
+  // escolhe sozinho todos os poderes pendentes (simulador; e o botão "a IA escolhe")
+  function autoPoderes(run, hi) { const h = run.herois[hi]; while (h && h.poderes && h.pend > 0) { const p = PODER.escolhaIA(h.hid, run.nivel, h.poderes); if (!p) { h.pend = 0; break; } escolherPoder(run, hi, p); } }
+  const poderesPendentes = run => run.herois.reduce((a, h) => a + (h.poderes && !h.morto ? h.pend || 0 : 0), 0);
+
+  /* ---------- mercenário: 5º personagem, jogado pela IA, sobe de nível com o grupo e não divide XP nem come ração ---------- */
+  const custoMerc = run => 50 * run.nivel;
+  function mercDisponiveis(run) { const usados = new Set(run.herois.map(h => h.hid)); return D.HEROIS.filter(H => !usados.has(H.id)).map(H => H.id); }
+  function podeContratar(run) { return !run.merc && (run.pendente === 'loja' || !!run.proxAndar); }
+  function contratarMerc(run, hid) {
+    if (!podeContratar(run)) return 'Só dá para contratar na loja ou na cidade, e um por vez.';
+    if (!mercDisponiveis(run).includes(hid)) return 'Esse herói não está disponível.';
+    const c = custoMerc(run); if (run.ouro < c) return 'Ouro insuficiente.';
+    run.ouro -= c; run.merc = { hid, merc: true, dano: 0, pmGasto: 0, morto: false, equip: { arma: null, armadura: null, acessorio: null }, cinto: [null, null, null], nivel: run.nivel };
+    atualizarMerc(run);
+    run.log.push(`🤝 ${D.HEROIS.find(x => x.id === hid).nome} entra no grupo como mercenário (T$ ${c}).`); return null;
+  }
+  function dispensarMerc(run) { if (!run.merc) return 'Não há mercenário.'; run.log.push(`👋 ${D.HEROIS.find(x => x.id === run.merc.hid).nome} deixa o grupo.`); run.merc = null; return null; }
+  // o mercenário escolhe os próprios poderes (a IA) e acompanha o nível do grupo
+  function atualizarMerc(run) {
+    const m = run.merc; if (!m) return;
+    if (m.nivel !== run.nivel) { const pvA = pvMaxDe(m, m.nivel), pvB = pvMaxDe(m, run.nivel); m.dano = Math.max(0, m.dano - Math.max(0, pvB - pvA)); m.nivel = run.nivel; }
+    m.poderes = run.herois.some(h => h.poderes) ? PODER.poderesIA(m.hid, run.nivel) : undefined;
   }
 
   /* ---------- progresso permanente ---------- */
@@ -645,7 +687,7 @@
 
   const API = {
     ITENS, EVENTOS, TEMAS, CHEFES, ANDARES, ULTIMO_ANDAR, proximoAndar, reviverNaCidade, custoReviverAndar, MARCOS, XP_NIVEL, PERICIAS, MAX_CINTO, LOJA_FIXOS,
-    novaRun, gerarMapa, proximos, noAtual, avancar, sairDoNo, vivos, inimigosDoNo, ndEncontro, ndTxt, nivelDoXP,
+    poderesDisponiveis, escolherPoder, autoPoderes, poderesPendentes, custoMerc, mercDisponiveis, podeContratar, contratarMerc, dispensarMerc, atualizarMerc, novaRun, gerarMapa, proximos, noAtual, avancar, sairDoNo, vivos, inimigosDoNo, ndEncontro, ndTxt, nivelDoXP,
     prepararBatalha, ajustarBatalha, concluirBatalha, unidadeHeroi, pvMaxDe, pmMaxDe,
     darItem, equipar, desequipar, estoqueLoja, comprar, vender, precoVenda,
     opcoesDescanso, descansar, racoesNecessarias, escolhasEvento, resolverEvento, bonusPericia,
