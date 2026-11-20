@@ -219,6 +219,9 @@
     if (S.sel != null && !ids.has(S.sel)) S.sel = null;
     const retrato = window.matchMedia('(max-width:860px)').matches;
     const cAtual = run.mapa.nos[run.atual].c;
+    // o que ainda dá para alcançar a partir de onde o grupo está (ou do nó escolhido)
+    const origem = S.sel != null ? S.sel : run.atual; const alc = new Set([origem]);
+    for (const n of run.mapa.nos.slice().sort((a, b) => a.c - b.c)) if (alc.has(n.id)) for (const j of n.liga) alc.add(j);
     const xp0 = RUN.XP_NIVEL[run.nivel], xp1 = RUN.XP_NIVEL[run.nivel + 1] || xp0 + 1;
     let h = barra('Andar 1 · Deheon', `<span class="gold">T$ ${run.ouro}</span><span title="Rações">🍖 ${run.bolsa.racao}</span><span title="Mochila">🎒 ${run.mochila.length}</span>`);
     h += '<div class="pmapa"><div class="pm-herois">';
@@ -233,16 +236,17 @@
     for (const n of run.mapa.nos) for (const j of n.liga) {
       const m2 = run.mapa.nos[j]; const a = posNo(n, retrato), b = posNo(m2, retrato);
       const feito = cam.has(n.id) && cam.has(m2.id) && run.caminho.indexOf(m2.id) === run.caminho.indexOf(n.id) + 1;
-      const opc = n.id === run.atual && ids.has(m2.id);
+      const opc = n.id === run.atual && ids.has(m2.id) && (S.sel == null || S.sel === m2.id);
+      const rota = !opc && alc.has(n.id) && alc.has(m2.id);
       const cor = feito ? '#8a5a2a' : opc ? '#ffc83d' : '#f1e2b0';
       const dash = feito ? '' : 'stroke-dasharray="8 6"';
-      svg += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#000" stroke-width="${feito || opc ? 8 : 5}" ${dash} vector-effect="non-scaling-stroke" opacity="${feito || opc ? 1 : m2.c > cAtual ? .55 : .2}"/><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${cor}" stroke-width="${feito || opc ? 4 : 2}" ${dash} vector-effect="non-scaling-stroke" opacity="${feito || opc ? 1 : m2.c > cAtual ? .55 : .2}"/>`;
+      svg += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#000" stroke-width="${feito || opc ? 8 : 5}" ${dash} vector-effect="non-scaling-stroke" opacity="${feito || opc ? 1 : rota ? .6 : .12}"/><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${cor}" stroke-width="${feito || opc ? 4 : 2}" ${dash} vector-effect="non-scaling-stroke" opacity="${feito || opc ? 1 : rota ? .6 : .12}"/>`;
     }
     svg += '</svg>';
     let nos = '';
     for (const n of run.mapa.nos) {
       const p = posNo(n, retrato);
-      const st = n.id === run.atual ? 'atual feito' : cam.has(n.id) ? 'feito' : ids.has(n.id) ? 'pode' : n.c <= cAtual ? 'passado' : 'futuro';
+      const st = n.id === run.atual ? 'atual feito' : cam.has(n.id) ? 'feito' : ids.has(n.id) ? (S.sel != null && S.sel !== n.id ? 'pode outro' : 'pode') : n.c <= cAtual ? 'passado' : alc.has(n.id) ? 'futuro' : 'futuro longe';
       const tipo = n.tipo === 'evento' && n.visitado ? 'evento' : n.tipo;
       const rosto = (ids.has(n.id) || n.tipo === 'chefe' || cam.has(n.id)) ? rostoDoNo(run, n) : null;
       const dentro = rosto ? face(rosto) : (tipo === 'evento' ? '?' : ICON[tipo]);
@@ -250,11 +254,12 @@
       nos += `<div class="nd ${st}${n.tipo === 'chefe' ? ' chefe' : ''}${S.sel === n.id ? ' sel' : ''}" style="left:${p.x}%;top:${p.y}%"><button class="f" data-no="${n.id}" style="--c:${COR_NO[tipo] || '#555'}" aria-label="${esc(NOME_TIPO[tipo] || tipo)}">${dentro}</button>${rot ? `<span class="l">${rot}</span>` : ''}</div>`;
     }
     const pa = posNo(run.mapa.nos[run.atual], retrato);
-    nos += `<div class="pm-grupo" style="left:${pa.x}%;top:calc(${pa.y}% - 26px)">${RUN.vivos(run).map(x => face(H(x.hid).token)).join('')}</div>`;
+    nos += `<div class="pm-voce" style="left:${pa.x}%;top:${pa.y}%" title="Vocês estão aqui"><span></span></div>`;
     h += `<div class="pm-win" id="pmWin"><div class="pm-in" style="${img ? `background-image:url('${img}');` : 'background:#5a7a3a;'}aspect-ratio:${retrato ? '200 / 353' : '380 / 279'}"><div class="win pm-chap"><small>ANDAR 1</small><b>ESTRADA E RUÍNAS</b></div>${svg}${nos}</div></div>`;
     // painel do nó
     const sel = S.sel != null ? run.mapa.nos[S.sel] : null;
     let pn = '<div class="scroll pm-info">';
+    if (prox.length) pn += `<div class="pm-prox"><small class="tag" style="color:#7a5a1a">PARA ONDE?</small>${prox.map(n => { const t = n.tipo === 'evento' && n.visitado ? 'evento' : n.tipo; return `<button class="pp${S.sel === n.id ? ' on' : ''}" data-no="${n.id}" style="--c:${COR_NO[t] || '#555'}"><i>${t === 'evento' ? '?' : ICON[t]}</i><span>${esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo])}</span></button>`; }).join('')}</div>`;
     if (sel) {
       if (['batalha', 'elite', 'chefe'].includes(sel.tipo)) {
         const g = RUN.inimigosDoNo(run, sel); const tema = RUN.TEMAS.find(t => t.id === sel.tema); const rosto = rostoDoNo(run, sel);

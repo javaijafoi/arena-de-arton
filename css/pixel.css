@@ -119,8 +119,9 @@ body.em-run #top{display:none}
 .nd.chefe .f .face-px{width:62px;height:62px}
 .nd.chefe .l{top:38px;background:var(--red);border-color:#000;font-size:13px}
 @keyframes ndpulso{50%{box-shadow:0 0 0 5px var(--gold),0 4px 0 5px #000a}}
-.pm-grupo{position:absolute;z-index:5;display:flex;transform:translate(-50%,-100%);pointer-events:none}
-.pm-grupo span{width:24px;height:24px;margin-left:-5px;border-width:2px}
+.pm-voce{position:absolute;z-index:5;width:0;height:0;pointer-events:none}
+.pm-voce span{position:absolute;left:-7px;top:-40px;width:14px;height:12px;background:var(--gold);clip-path:polygon(0 0,100% 0,50% 100%);filter:drop-shadow(0 2px 0 #000);animation:pmVoce 1s steps(2) infinite}
+@keyframes pmVoce{50%{transform:translateY(-3px)}}
 .pm-info{padding:12px;display:flex;flex-direction:column;gap:8px}
 .pm-info .big{width:100%;aspect-ratio:1;max-width:220px;align-self:center}
 .pm-info h3{font-size:20px;margin:0;line-height:1}
@@ -317,3 +318,27 @@ body.px-treino #menu .lvl{font-family:'VT323';font-weight:400}
 .of small{font-size:17px;color:#6a5040;line-height:1}
 .of .btn{flex:none}
 .salao{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+/* mapa: escolha do caminho em lista, além do toque no nó */
+.pm-prox{display:grid;gap:6px;grid-column:1/-1}
+.pp{display:flex;align-items:center;gap:8px;background:var(--par3);border:3px solid var(--par2);padding:4px 8px;text-align:left;color:var(--pink);font:400 19px 'VT323';box-shadow:0 3px 0 #0006}
+.pp i{display:grid;place-items:center;flex:none;width:28px;height:28px;background:var(--c);border:2px solid #000;font-style:normal;font-size:15px;color:#fff}
+.pp span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp.on{border-color:var(--gold);box-shadow:0 0 0 3px var(--pink),0 0 0 6px var(--gold)}
+@media (max-width:860px){
+  .pm-win{max-height:62vh!important}
+  .pm-in{aspect-ratio:auto!important;height:1150px;background-size:cover!important;background-position:center}
+  .pm-info{order:2!important}
+  .pm-herois{order:3!important}
+  .nd.pode .f{left:-26px;top:-26px;width:52px;height:52px}
+  .nd.pode .f .face-px{width:46px;height:46px}
+  .nd:not(.chefe) .l{display:none!important}
+  .nd.inicio .l{display:block}
+}
+/* caminhos que não dá mais para seguir ficam pequenos e apagados */
+.nd.longe .f{left:-9px!important;top:-9px!important;width:18px!important;height:18px!important;font-size:0!important;opacity:.35;box-shadow:none}
+.nd.longe .f .face-px{display:none}
+.nd.chefe.longe .f{left:-34px!important;top:-34px!important;width:68px!important;height:68px!important;opacity:1}
+.nd.chefe.longe .f .face-px{display:block}
+.nd.futuro:not(.longe) .f{border-color:#000;background:#3d3050;color:#fff}
+.nd.pode.outro .f{animation:none;box-shadow:0 0 0 2px var(--gold),0 3px 0 2px #000a;filter:brightness(.8)}

@@ -124,20 +124,19 @@
       for (const l of lanes) { const n = { id: nos.length, c, l, tipo: 'batalha', liga: [] }; nos.push(n); col[c].push(n.id); }
     }
     const chefe = { id: nos.length, c: COLS, l: 1.5, tipo: 'chefe', liga: [] }; nos.push(chefe); col[COLS] = [chefe.id];
-    // arestas: cada nó liga aos nós da coluna seguinte em faixas vizinhas
+    // arestas sem cruzamento: as duas colunas são percorridas de cima para baixo ao mesmo tempo
+    // (cada nó liga a um bloco contínuo de vizinhos na coluna seguinte, então nenhuma linha cruza outra)
     for (let c = 0; c < COLS; c++) {
-      for (const id of col[c]) {
-        const a = nos[id]; const prox = col[c + 1].map(j => nos[j]);
-        let alvos = c === 0 || c + 1 === COLS ? prox : prox.filter(b => Math.abs(b.l - a.l) <= 1);
-        if (!alvos.length) alvos = [prox.slice().sort((x, y) => Math.abs(x.l - a.l) - Math.abs(y.l - a.l))[0]];
-        if (c > 0 && c + 1 < COLS && alvos.length > 2) alvos = embaralhar(o, alvos).slice(0, 2);
-        a.liga = alvos.map(b => b.id);
-      }
-      // todo nó da coluna seguinte precisa de entrada
-      for (const j of col[c + 1]) {
-        if (!col[c].some(i => nos[i].liga.includes(j))) {
-          const b = nos[j]; const src = col[c].map(i => nos[i]).sort((x, y) => Math.abs(x.l - b.l) - Math.abs(y.l - b.l))[0]; src.liga.push(j);
-        }
+      const A = col[c].map(i => nos[i]).sort((x, y) => x.l - y.l), B = col[c + 1].map(j => nos[j]).sort((x, y) => x.l - y.l);
+      const liga = (a, b) => { if (!a.liga.includes(b.id)) a.liga.push(b.id); };
+      if (A.length === 1 || B.length === 1) { for (const a of A) for (const b of B) liga(a, b); continue; }
+      let i = 0, k = 0; liga(A[0], B[0]);
+      while (i < A.length - 1 || k < B.length - 1) {
+        const na = i < A.length - 1 ? A[i + 1].l : Infinity, nb = k < B.length - 1 ? B[k + 1].l : Infinity;
+        if (na < nb) i++;
+        else if (nb < na) k++;
+        else { if (rnd(o) < 0.35) liga(A[i], B[k + 1]); else if (rnd(o) < 0.35) liga(A[i + 1], B[k]); i++; k++; }
+        liga(A[i], B[k]);
       }
     }
     // tipos por coluna
