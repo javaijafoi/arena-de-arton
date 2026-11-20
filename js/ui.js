@@ -239,7 +239,7 @@
   }
   function fita(u) {
     const f = document.createElement('div'); f.className = 'fita ' + u.lado;
-    f.innerHTML = `<i style="background-image:${TOK(u.token)}"></i><span>${ehIA(u) ? '' : 'Sua vez: '}<b>${u.nome}</b></span>`;
+    f.innerHTML = `<i style="background-image:${TOK.px(u.token)}"></i><span>${ehIA(u) ? '' : 'Sua vez: '}<b>${u.nome}</b></span>`;
     f.style.animationDuration = (1.5 / G.vel) + 's'; $('board').appendChild(f); setTimeout(() => f.remove(), 1600 / G.vel);
   }
   async function banner(txt, ms) { const b = $('banner'); b.textContent = txt; b.classList.remove('go'); void b.offsetWidth; b.style.animationDuration = (1.2 / G.vel) + 's'; b.classList.add('go'); await sleep(ms || 700); }
@@ -381,7 +381,7 @@
     const st = G.st; const o = $('order'); const n = st.ordem.length; let html = `<div class="rd">RODADA<b>${st.rodada}</b></div>`;
     for (let k = 0; k < n; k++) {
       const id = st.ordem[(st.vez + k) % n]; const u = R.porId(st, id); if (!u.vivo) continue;
-      html += `<div class="op ${u.lado}${k === 0 ? ' now' : ''}${R.incapaz(u) ? ' ko' : ''}" data-id="${u.id}"><div style="background-image:${TOK(u.token)}"><i>${st.iniciativa[u.id]}</i></div><span>${u.nome.split(' ')[0]}</span></div>`;
+      html += `<div class="op ${u.lado}${k === 0 ? ' now' : ''}${R.incapaz(u) ? ' ko' : ''}" data-id="${u.id}"><div style="background-image:${TOK.px(u.token)}"><i>${st.iniciativa[u.id]}</i></div><span>${u.nome.split(' ')[0]}</span></div>`;
     }
     o.innerHTML = html;
     o.querySelectorAll('.op').forEach(el => { el.onclick = () => { G.inspect = el.dataset.id; atualizarCartao(); }; });
@@ -684,7 +684,7 @@
         <span>Dano se acertar tudo</span><b>${totMin}–${totMax}</b><span>Crítico</span><b>${pv[0].margem}+ (×${pv[0].mult})</b><span>PV do alvo</span><b>${Math.max(0, o.pv)} / ${o.pvMax}</b></div>
         ${pv[0].mods.length ? `<div class="mods">${[...new Set(pv.flatMap(p => p.mods))].join(' · ')}${pv[0].furtivo ? ' · ataque furtivo!' : ''}</div>` : ''}`;
     }
-    el.innerHTML = `<h3>Previsão</h3><div class="fc"><div><div class="p ${u.lado}" style="background-image:${TOK(u.token)}"></div><b style="font-size:12px">${u.nome.split(' ')[0]}</b></div><div class="vs">VS</div><div><div class="p ${o.lado}" style="background-image:${TOK(o.token)}"></div><b style="font-size:12px">${o.nome.split(' ')[0]}</b></div></div>${corpo}`;
+    el.innerHTML = `<h3>Previsão</h3><div class="fc"><div><div class="p ${u.lado}" style="background-image:${TOK.px(u.token)}"></div><b style="font-size:12px">${u.nome.split(' ')[0]}</b></div><div class="vs">VS</div><div><div class="p ${o.lado}" style="background-image:${TOK.px(o.token)}"></div><b style="font-size:12px">${o.nome.split(' ')[0]}</b></div></div>${corpo}`;
   }
 
   /* ---------- mira de efeitos em área (confirmação) ---------- */
@@ -850,7 +850,7 @@
     const st = G.st; const venceu = st.fim === 'herois'; SOM.tocar(venceu ? 'vitoria' : 'derrota');
     if (G.modo === 'run' && G.runCtx) { const ctx = G.runCtx; G.runCtx = null; if (venceu) { const c = { x: W / 2, y: H / 2 }; for (let k = 0; k < 3; k++) setTimeout(() => explosao(c.x + (Math.random() - .5) * 500, c.y + (Math.random() - .5) * 300, ['#f5c542', '#5b9bff', '#8dffa4'][k], 50, 6, .08), k * 250); } return ctx.aoFim(st, G.stats); }
     const herois = st.unidades.filter(u => u.lado === 'h');
-    const faces = herois.map((u, i) => `<div class="${u.vivo ? '' : 'x'}" style="background-image:${TOK(u.token)};animation-delay:${i * .1}s" title="${u.nome}"></div>`).join('');
+    const faces = herois.map((u, i) => `<div class="${u.vivo ? '' : 'x'}" style="background-image:${TOK.px(u.token)};animation-delay:${i * .1}s" title="${u.nome}"></div>`).join('');
     let html = `<h2>${venceu ? 'Vitória!' : 'Derrota…'}</h2><div class="faces">${faces}</div>`;
     const caidos = herois.filter(u => !u.vivo).map(u => u.nome);
     const linhas = herois.map(u => ({ u, s: G.stats[u.id] || { dano: 0, cura: 0, abates: 0 } }));

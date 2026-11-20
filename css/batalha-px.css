@@ -1,0 +1,84 @@
+/* Arena de Arton: a moldura da batalha no visual pixel. O tabuleiro e os tokens não mudam.
+   Carregado depois do <style> da página para valer sobre o visual antigo. */
+/* ---------- batalha: a moldura em volta do tabuleiro no visual pixel (o tabuleiro e os tokens não mudam) ---------- */
+#top,#game,#over,#tip,#mira{--pf:#2b2236;--pf2:#3d3050;--pf3:#1a1322;--pfl:#54426b;--par:#e9d9a6;--par2:#cdb97e;--par3:#d9c78f;--pink:#2a1d14;--gold:#ffc83d;--muted:#b9a8d6;--edge:#1a1322}
+body:not(.em-run){background:#1a1322;background-image:linear-gradient(45deg,#0003 25%,transparent 25% 75%,#0003 75%),linear-gradient(45deg,#0003 25%,transparent 25% 75%,#0003 75%);background-size:8px 8px;background-position:0 0,4px 4px}
+#top{font-family:'VT323',monospace}
+#top h1{font:700 22px 'Pixelify Sans';text-transform:uppercase;color:var(--gold);text-shadow:0 3px 0 #000}
+#top .sub{font:400 19px 'VT323';color:var(--muted)}
+#top .tog{border-radius:0;background:var(--pf2);border:3px solid var(--pf);box-shadow:inset 0 0 0 2px var(--pfl);font:400 18px 'VT323';padding:2px 10px;color:#fff}
+#top .tog.on{color:var(--gold);box-shadow:inset 0 0 0 2px var(--gold)}
+#top #tMenu{background:var(--par);color:var(--pink);border:3px solid var(--par2);box-shadow:0 0 0 2px var(--pink),0 4px 0 2px #000a;font:700 14px 'Pixelify Sans';text-transform:uppercase}
+#game .win,#over .win,#mira.win{background:var(--pf2);border:4px solid var(--pf);border-radius:0;box-shadow:inset 0 0 0 3px var(--pfl),0 5px 0 #0009}
+#over .win.red{background:#5a1c22;border-color:#2a0d10;box-shadow:inset 0 0 0 3px #8e2733,0 5px 0 #0009}
+#game h3,#over h2,#over h3{font-family:'Pixelify Sans';font-weight:700;text-transform:uppercase;letter-spacing:0;color:var(--gold)}
+#game{font-family:'VT323',monospace}
+#order .lab,#order .rd{font-family:'Pixelify Sans'}
+#order .rd{border-right:3px solid var(--pfl)}
+#order .rd b{font-size:26px;font-family:'Pixelify Sans'}
+.op{font:400 16px 'VT323'}
+.op div{border-radius:0;border:3px solid #000;box-shadow:0 0 0 3px var(--blue),0 4px 0 3px #000a;image-rendering:pixelated;background-position:center}
+.op.m div{box-shadow:0 0 0 3px var(--red),0 4px 0 3px #000a}
+.op.now div{box-shadow:0 0 0 3px var(--gold),0 4px 0 3px #000a}
+.op i{border-radius:0;font:400 14px 'VT323';background:var(--pf3);border:2px solid #000}
+#game .big{border-radius:0;border:4px solid #000;image-rendering:pixelated;background-position:center}
+#game .big:after{background:linear-gradient(transparent 50%,#1a1322f0)}
+#game .big b{font:700 18px 'Pixelify Sans';text-transform:uppercase}
+#game .big small{font:400 17px 'VT323'}
+#game .side{border-radius:0;font:700 12px 'Pixelify Sans';border:2px solid #000}
+#game .bar{font:400 17px 'VT323'}
+#game .bar .b{border-radius:0;border:2px solid #000;background:var(--pf3)}
+#game .stats div{border-radius:0;background:var(--pf3);border:2px solid var(--pfl)}
+#game .stats small{font:700 10px 'Pixelify Sans'}#game .stats b{font:400 20px 'VT323'}
+#game .cond{border-radius:0;font:400 15px 'VT323';background:var(--pf3)}
+#game .extra,#game .desc{font-size:16px;line-height:1.1;color:var(--muted)}
+#game .hint{font:400 17px 'VT323';line-height:1.1}
+#acts .abtn{border-radius:0;background:var(--par);color:var(--pink);border:3px solid var(--par2);box-shadow:0 3px 0 #0008;font:700 14px 'Pixelify Sans';text-transform:uppercase}
+#acts .abtn:hover:not([disabled]){background:#f3e6b8;border-color:var(--gold)}
+#acts .abtn.on{background:var(--gold);border-color:#ffe38a}
+#acts .abtn .c{font:400 17px 'VT323';color:#2b5aa8}
+#acts .pip{border-radius:0;font:700 11px 'Pixelify Sans';background:var(--pf3)}
+#acts .sub{border-radius:0;background:var(--pf3)!important;border:2px solid var(--pfl)}
+#acts .stepper{font:400 17px 'VT323'}
+#acts .stepper button{border-radius:0;background:var(--par);color:var(--pink);border:2px solid var(--par2)}
+#game .btn,#over .btn{font-family:'Pixelify Sans';font-weight:700;text-transform:uppercase;background:var(--par);color:var(--pink);border:4px solid var(--par2);border-radius:0;box-shadow:0 0 0 3px var(--pink),0 6px 0 3px #000a}
+#game .btn.gold,#over .btn.gold{background:var(--gold);border-color:#ffe38a}
+#game .btn.red,#over .btn.red{background:#b5251f;border-color:#e86a55;color:#fff}
+#board{border-radius:0;box-shadow:0 0 0 6px var(--par2),0 0 0 10px var(--pink),0 12px 0 10px #0009}
+#fore .fc .p{border-radius:0;border:3px solid #000;box-shadow:0 0 0 3px var(--blue);image-rendering:pixelated;background-position:center}
+#fore .fc .p.m{box-shadow:0 0 0 3px var(--red)}
+#fore .fc .vs{font-family:'Pixelify Sans'}
+#fore .fl{font:400 18px 'VT323'}
+#fore .mods{font-size:15px}
+#log{font:400 17px/1.1 'VT323'}
+#log h3{background:var(--pf2);border-radius:0}
+#log p{color:#e8def8}
+#tip{border-radius:0;background:var(--pf3);border:3px solid var(--pfl);font:400 17px/1.1 'VT323'}
+#tip b{font-family:'Pixelify Sans'}
+.fita{background:linear-gradient(90deg,var(--pf),#3d3050ee 80%,#3d305000)}
+.fita b{font-family:'Pixelify Sans';text-transform:uppercase}
+.fita i{border-radius:0;image-rendering:pixelated}
+#banner{font-family:'Pixelify Sans';text-transform:uppercase}
+#over{background:#1a1322bb;backdrop-filter:none}
+#over h2{font-size:30px}
+#over p{font:400 20px/1.1 'VT323'}
+#over .faces div{border-radius:0;border:3px solid #000;image-rendering:pixelated;background-position:center}
+#over .news{border-radius:0;background:var(--par);color:var(--pink);font:400 18px 'VT323'}
+#over .news b{color:#8a4a00}
+#mira{border-radius:0}
+#mira .mi-t{font:400 17px/1.1 'VT323'}
+#mira .mi-b{border-radius:0;border:3px solid #000;box-shadow:0 4px 0 #000a}
+#mira .mi-b.ok{background:#3fbf5a}
+#mira .mi-b.x{background:#b5251f}
+.die{border-radius:0;background:var(--pf2);font-family:'VT323'}
+/* na batalha o topo só tem título e menu; IA, som etc. ficam em Opções */
+#top .tog:not(#tMenu){display:none!important}
+#top{background:var(--pf2);border:4px solid var(--pf);box-shadow:inset 0 0 0 3px var(--pfl),0 5px 0 #0009;padding:6px 12px;flex-wrap:nowrap}
+#top .sub{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#top #tMenu{order:-1}
+@media (max-width:760px){#top h1{display:none}}
+#order .op div{border-radius:0}
+#order .rd,#order .lab{font-family:'Pixelify Sans';text-transform:uppercase}
+#top .sub{background:none;border:0;padding:0}
+body:not(.em-run) footer{font-family:'VT323',monospace;font-size:17px!important;color:var(--muted)}
+body:not(.em-run) footer b{font-weight:400;color:#e9d9a6}
