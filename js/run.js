@@ -73,6 +73,14 @@
     vitalidade: { nome: 'Anel da Vitalidade', slot: 'acessorio', preco: 21000, ic: '💍', magico: true, desc: '+10 PV.', ef: { pv: 10 } },
     robustez: { nome: 'Amuleto da Robustez', slot: 'acessorio', preco: 25500, ic: '📿', magico: true, desc: '+2 Constituição.', ef: { con: 2 } },
     cintoGigante: { nome: 'Cinto da Força do Gigante', slot: 'acessorio', preco: 25500, ic: '🎗', magico: true, desc: '+2 Força.', ef: { for: 2 } },
+    // lendários: comprados com o ouro do cofre no Salão das Lendas (abre na 1ª vitória). São do jogador para sempre:
+    // vão para qualquer run e voltam no fim, mesmo se o grupo cair. Nunca aparecem em loja, baú ou tesouro.
+    lamCampeao: { nome: 'Lâmina do Campeão', slot: 'arma', preco: 80000, ic: '⚔', magico: true, epico: true, desc: '+3 no ataque e no dano; a margem de ameaça dobra.', ef: { ataque: 3, dano: 3, ameacadora: true } },
+    lamTormenta: { nome: 'Lâmina da Tormenta', slot: 'arma', preco: 80000, ic: '🌩', magico: true, epico: true, desc: '+2 no ataque e +2d6 de dano de eletricidade em cada acerto.', ef: { ataque: 2, extra: [2, 6, 'eletricidade'] } },
+    armColosso: { nome: 'Armadura do Colosso', slot: 'armadura', preco: 90000, ic: '🛡', magico: true, epico: true, desc: '+4 na Defesa, +2 em resistências e +20 PV.', ef: { def: 4, res: 2, pv: 20 } },
+    mantoArquimago: { nome: 'Manto do Arquimago', slot: 'acessorio', preco: 70000, ic: '🌌', magico: true, epico: true, desc: '+10 PM e +3 em testes de resistência.', ef: { pm: 10, res: 3 } },
+    coroaReis: { nome: 'Coroa dos Reis Antigos', slot: 'acessorio', preco: 120000, ic: '👑', magico: true, epico: true, desc: '+2 em Força, Destreza e Constituição.', ef: { for: 2, des: 2, con: 2 } },
+    anelTita: { nome: 'Anel do Titã', slot: 'acessorio', preco: 70000, ic: '💍', magico: true, epico: true, desc: '+40 PV.', ef: { pv: 40 } },
     pulseiras: { nome: 'Pulseiras da Celeridade', slot: 'acessorio', preco: 25500, ic: '⌚', magico: true, desc: '+2 Destreza.', ef: { des: 2 } },
   };
   const LOJA_FIXOS = ['pocao', 'racao', 'barraca'];
@@ -235,7 +243,7 @@
     const run = {
       v: 1, seed, sorte: { seed: seed ^ 0x5bd1e995 }, andar: 1, xp: 0, nivel: 1, ouro: cfg.ouro != null ? cfg.ouro : 150,
       herois: cfg.herois.slice(0, 4).map(hid => ({ hid, dano: 0, pmGasto: 0, morto: false, equip: { arma: null, armadura: null, acessorio: null }, cinto: ['pocao', null, null], pvTreino: (cfg.treino && cfg.treino[(D.HEROIS.find(x => x.id === hid) || {}).classe]) * PV_TREINO || 0, ...(cfg.semPoderes ? {} : { poderes: [], pend: 0 }) })),
-      merc: null, mercLiberado: cfg.mercLiberado !== undefined ? !!cfg.mercLiberado : true,
+      merc: null, mercLiberado: cfg.mercLiberado !== undefined ? !!cfg.mercLiberado : true, mercLendario: !!cfg.mercLendario,
       bolsa: { racao: 4, barraca: 0, corda: 0 }, mochila: [],
       mapa: null, atual: 0, caminho: [0], log: [], fim: null, pendente: null,
       stats: { batalhas: 0, elites: 0, abates: 0, xp: 0, ouroGanho: 0, mortes: 0, rodadas: 0 },
@@ -246,6 +254,8 @@
     if (cfg.andar > 1) { run.andar = Math.min(ULTIMO_ANDAR, cfg.andar); run.nivel = ANDARES[run.andar - 1].teto; run.xp = XP_NIVEL[run.nivel]; run.nivelInicial = run.nivel; }
     for (const h of run.herois) if (h.poderes) h.pend = run.nivel - 1; // começando acima do 1º nível: os poderes atrasados ficam para escolher
     for (const it of cfg.itens || []) darItem(run, it);
+    // lendários vão equipados direto: cada item no primeiro herói com o espaço livre
+    for (const it of cfg.lendarios || []) { const I = ITENS[it]; if (!I || !I.epico) continue; const h = run.herois.find(x => !x.equip[I.slot]); if (h) h.equip[I.slot] = it; else run.mochila.push(it); }
     run.mapa = gerarMapa(run.sorte);
     for (const n of run.mapa.nos) prepararNo(run, n);
     return run;
@@ -308,6 +318,7 @@
       if (ef.def) u.defBase += ef.def;
       if (ef.res) { u.per.fort += ef.res; u.per.ref += ef.res; u.per.von += ef.res; }
       if (ef.pv) { u.pvMax += ef.pv; u.pv += ef.pv; }
+      if (ef.pm) { u.pmMax = (u.pmMax || 0) + ef.pm; u.pm = (u.pm || 0) + ef.pm; }
       if (ef.pvTreino) { u.pvMax += ef.pvTreino; u.pv += ef.pvTreino; }
       if (ef.for) { u.attr.for += ef.for; u.per.luta += ef.for; }
       if (ef.des) { u.attr.des += ef.des; u.per.pont += ef.des; u.per.ref += ef.des; u.per.inic += ef.des; if (!c.armaduraPesada) u.defBase += ef.des; }
@@ -618,21 +629,25 @@
     brucutu: { nome: 'Brucutu', papel: 'bruto', arma: 'Clava', dano: 'impacto', token: 'capanga', desc: 'Força bruta corpo a corpo.' },
     guarda: { nome: 'Guarda', papel: 'tanque', arma: 'Lança', dano: 'perfuração', token: 'soldado-purista', desc: 'Lento e duro de derrubar; segura a linha.' },
     besteiro: { nome: 'Besteiro', papel: 'atirador', arma: 'Adaga', tiro: 'Besta pesada', token: 'saqueadora', desc: 'Atira de longe.' },
+    // lendários: liberados no Salão das Lendas; ficam bem mais perto do nível do grupo e custam o triplo
+    campeao: { nome: 'Campeão da Arena', papel: 'bruto', arma: 'Machado de guerra', dano: 'corte', token: 'orc-rei', desc: 'Lendário. Veterano de mil lutas, bate muito forte.', lendario: true },
+    guardiao: { nome: 'Guardião de Bronze', papel: 'tanque', arma: 'Pancada', dano: 'impacto', token: 'golem-de-bronze', desc: 'Lendário. Construto da guilda, quase impossível de derrubar.', lendario: true, tipo: 'construto' },
+    cacadora: { nome: 'Caçadora de Lendas', papel: 'atirador', arma: 'Espada curta', tiro: 'Arco longo', token: 'hobgoblin-atirador', desc: 'Lendária. Não erra de longe.', lendario: true },
   };
-  const ndMerc = nivel => Math.max(0.5, Math.floor(nivel / 2));
+  const ndMerc = (nivel, tipo) => (NPC_MERC[tipo] || {}).lendario ? Math.max(1, Math.floor(nivel * 3 / 4)) : Math.max(0.5, Math.floor(nivel / 2));
   function criaturaMerc(tipo, nivel) {
-    const N = NPC_MERC[tipo]; const nd = ndMerc(nivel); const id = `merc_${tipo}_${nd}`;
-    if (!D.CRIATURAS[id]) { const c = BEST.criatura(N.nome, nd, N.papel, { arma: N.arma, dano: N.dano, tiro: N.tiro, token: N.token, tipo: 'humanoide' }); c.ndTxt = nd === 0.5 ? '1/2' : String(nd); c.merc = true; D.CRIATURAS[id] = c; }
+    const N = NPC_MERC[tipo]; const nd = ndMerc(nivel, tipo); const id = `merc_${tipo}_${nd}`;
+    if (!D.CRIATURAS[id]) { const c = BEST.criatura(N.nome, nd, N.papel, { arma: N.arma, dano: N.dano, tiro: N.tiro, token: N.token, tipo: N.tipo || 'humanoide' }); c.ndTxt = nd === 0.5 ? '1/2' : String(nd); c.merc = true; D.CRIATURAS[id] = c; }
     return id;
   }
-  const custoMerc = run => 50 * run.nivel;
-  function mercDisponiveis() { return Object.keys(NPC_MERC); }
+  const custoMerc = (run, tipo) => ((NPC_MERC[tipo] || {}).lendario ? 150 : 50) * run.nivel;
+  function mercDisponiveis(run) { return Object.keys(NPC_MERC).filter(t => !NPC_MERC[t].lendario || (run && run.mercLendario)); }
   function podeContratar(run) { return run.mercLiberado !== false && !run.merc && (run.pendente === 'loja' || !!run.proxAndar); }
   function contratarMerc(run, tipo) {
     if (run.mercLiberado === false) return 'Contratar mercenários se libera na guilda.';
     if (!podeContratar(run)) return 'Só dá para contratar na loja ou na cidade, e um por vez.';
-    if (!NPC_MERC[tipo]) return 'Esse mercenário não existe.';
-    const c = custoMerc(run); if (run.ouro < c) return 'Ouro insuficiente.';
+    if (!NPC_MERC[tipo] || !mercDisponiveis(run).includes(tipo)) return 'Esse mercenário não está disponível.';
+    const c = custoMerc(run, tipo); if (run.ouro < c) return 'Ouro insuficiente.';
     run.ouro -= c; run.merc = { tipo, merc: true, dano: 0, pmGasto: 0, morto: false, cinto: [null, null, null], nivel: run.nivel };
     run.log.push(`🤝 ${NPC_MERC[tipo].nome} entra no grupo como mercenário (T$ ${c}).`); return null;
   }
@@ -649,9 +664,10 @@
     { id: 'bolsaRica', pts: 8000, nome: 'Família rica e Armeiro', desc: 'Libera na guilda a Família rica (+T$ 100 na partida) e o Armeiro.' },
     { id: 'templo', pts: 16000, nome: 'Templo', desc: 'Libera o Templo na guilda: reviver um herói por run.' },
     { id: 'nivel2', pts: 30000, nome: 'Torre de treino', desc: 'Libera a Torre na guilda: começar a run no nível 2.' },
+    { id: 'lendas', pts: 30000, vitoria: true, nome: 'Salão das Lendas', desc: 'Abre quando o grupo vence a run (chega ao nível 20 e derrota o último chefe): itens e mercenários lendários.' },
   ];
   function novoMeta() { return { v: 1, pontos: 0, porClasse: {}, runs: 0, vitorias: 0, bau: [], ouro: 0, melhor: 0, historico: [] }; }
-  function liberado(meta, id) { const m = MARCOS.find(x => x.id === id); return !!m && meta.pontos >= m.pts; }
+  function liberado(meta, id) { const m = MARCOS.find(x => x.id === id); return !!m && meta.pontos >= m.pts && (!m.vitoria || (meta.vitorias || 0) > 0); }
   // pontos liberam o acesso; o ouro do cofre paga. Melhorias compradas valem para todas as runs.
   const PV_TREINO = 4; const TREINO_CUSTO = [800, 1600, 3200];
   const MELHORIAS = [
@@ -661,17 +677,27 @@
     { id: 'templo', marco: 'templo', custo: 30000, nome: 'Templo', desc: 'Uma vez por run, reviva um herói por T$ 200 na fogueira.' },
     { id: 'nivel2', marco: 'nivel2', custo: 60000, nome: 'Torre de treino', desc: 'O grupo começa a run no nível 2.' },
     { id: 'contratos', marco: 'guilda', custo: 12000, nome: 'Mural de contratos', desc: 'Libera contratar um mercenário (NPC jogado pela IA) nas lojas e cidades.' },
+    { id: 'lendarios', marco: 'lendas', custo: 100000, nome: 'Contratos lendários', desc: 'Libera os mercenários lendários (Campeão da Arena, Guardião de Bronze, Caçadora de Lendas): ND de 3/4 do nível do grupo, por T$ 150 × nível.' },
     { id: 'mestres', marco: 'bolsaRica', custo: 40000, nome: 'Mestres da guilda', desc: 'Ao subir de nível, cada herói escolhe um poder do Livro Base (em vez do bônus genérico).' },
   ];
   // configuração de uma run nova a partir do que a guilda já liberou
   function cfgDaGuilda(meta) {
-    return { ouro: 150 + (tem(meta, 'bolsaRica') ? 100 : 0), nivel: tem(meta, 'nivel2') ? 2 : 1, treino: meta.treino || {}, semPoderes: !tem(meta, 'mestres'), mercLiberado: tem(meta, 'contratos') };
+    return { ouro: 150 + (tem(meta, 'bolsaRica') ? 100 : 0), nivel: tem(meta, 'nivel2') ? 2 : 1, treino: meta.treino || {}, semPoderes: !tem(meta, 'mestres'), mercLiberado: tem(meta, 'contratos'), mercLendario: tem(meta, 'contratos') && tem(meta, 'lendarios'), lendarios: arsenal(meta).slice(0, MAX_LENDARIOS) };
   }
   function tem(meta, id) { return !!(meta.compras && meta.compras[id]) && liberado(meta, (MELHORIAS.find(x => x.id === id) || {}).marco); }
   function comprarMelhoria(meta, id) {
     const M = MELHORIAS.find(x => x.id === id); if (!M) return 'Não existe.'; if (!liberado(meta, M.marco)) return 'Ainda bloqueado.';
     meta.compras = meta.compras || {}; if (meta.compras[id]) return 'Já comprado.'; if (meta.ouro < M.custo) return 'Ouro insuficiente no cofre.';
     meta.ouro -= M.custo; meta.compras[id] = true; return null;
+  }
+  // arsenal lendário: itens épicos comprados com o cofre, do jogador para sempre (até 4 vão para cada run)
+  const LENDARIOS = Object.keys(ITENS).filter(id => ITENS[id].epico);
+  const MAX_LENDARIOS = 4;
+  function arsenal(meta) { return liberado(meta, 'lendas') ? (meta.arsenal || []).filter(id => ITENS[id] && ITENS[id].epico) : []; }
+  function comprarLendario(meta, id) {
+    const I = ITENS[id]; if (!I || !I.epico) return 'Não existe.'; if (!liberado(meta, 'lendas')) return 'O Salão das Lendas abre na primeira vitória.';
+    meta.arsenal = meta.arsenal || []; if (meta.arsenal.includes(id)) return 'Já é seu.'; if (meta.ouro < I.preco) return 'Ouro insuficiente no cofre.';
+    meta.ouro -= I.preco; meta.arsenal.push(id); return null;
   }
   function custoTreino(meta, classe) { const n = (meta.treino || {})[classe] || 0; return n < TREINO_CUSTO.length ? TREINO_CUSTO[n] : null; }
   function comprarTreino(meta, classe) {
@@ -688,8 +714,8 @@
     meta.melhorAndar = Math.max(meta.melhorAndar || 0, run.andar || 1);
     const traz = venceu || andares >= 1; // quem limpou ao menos um andar traz equipamento e mochila para o baú
     if (traz) {
-      for (const h of run.herois) { for (const s of ['arma', 'armadura', 'acessorio']) if (h.equip[s]) fica.push(h.equip[s]); }
-      for (const it of run.mochila) if (ITENS[it].slot !== 'cinto') fica.push(it);
+      for (const h of run.herois) { for (const s of ['arma', 'armadura', 'acessorio']) if (h.equip[s] && !ITENS[h.equip[s]].epico) fica.push(h.equip[s]); }
+      for (const it of run.mochila) if (ITENS[it].slot !== 'cinto' && !ITENS[it].epico) fica.push(it);
       meta.bau.push(...fica);
     }
     if (venceu) meta.ouro += run.ouro;
@@ -706,6 +732,7 @@
 
   const API = {
     ITENS, EVENTOS, TEMAS, CHEFES, ANDARES, ULTIMO_ANDAR, proximoAndar, reviverNaCidade, custoReviverAndar, MARCOS, XP_NIVEL, PERICIAS, MAX_CINTO, LOJA_FIXOS,
+    LENDARIOS, MAX_LENDARIOS, arsenal, comprarLendario,
     poderesDisponiveis, escolherPoder, autoPoderes, poderesPendentes, custoMerc, mercDisponiveis, podeContratar, NPC_MERC, fichaMerc, ndMerc, criaturaMerc, contratarMerc, dispensarMerc, atualizarMerc, novaRun, gerarMapa, proximos, noAtual, avancar, sairDoNo, vivos, inimigosDoNo, ndEncontro, ndTxt, nivelDoXP,
     prepararBatalha, ajustarBatalha, concluirBatalha, unidadeHeroi, pvMaxDe, pmMaxDe,
     darItem, equipar, desequipar, estoqueLoja, comprar, vender, precoVenda,
