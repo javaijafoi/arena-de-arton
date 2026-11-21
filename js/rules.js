@@ -202,7 +202,9 @@
   /* ---------- batalha ---------- */
   function novaBatalha(cfg) {
     const st = { seed: cfg.seed >>> 0 || 12345, mapa: { ...MAPAS[cfg.mapa], id: cfg.mapa }, unidades: [], ordem: [], vez: 0, rodada: 1, log: [], fim: null, teia: [], turnoId: 0, cfg: { ...cfg } };
-    cfg.herois.forEach((h, i) => { const u = criarHeroi(h, cfg.nivel, i, cfg.poderes && cfg.poderes[i] || undefined); if (cfg.merc === i) { u.merc = true; u.nome += ' (mercenário)'; } st.unidades.push(u); });
+    cfg.herois.forEach((h, i) => st.unidades.push(criarHeroi(h, cfg.nivel, i, cfg.poderes && cfg.poderes[i] || undefined)));
+    // mercenário da run: um NPC (ficha de criatura) lutando do lado dos heróis, sempre jogado pela IA
+    if (cfg.mercCriatura) { const u = criarCriatura(cfg.mercCriatura, 0); u.id = 'h' + cfg.herois.length; u.lado = 'h'; u.merc = true; u.nome += ' (mercenário)'; u.chefe = false; st.unidades.push(u); }
     cfg.inimigos.forEach((m, i) => st.unidades.push(criarCriatura(m, i)));
     posicionarHerois(st);
     posicionar(st, st.unidades.filter(u => u.lado === 'm'), [13, 12, 14, 11, 15]);
@@ -350,7 +352,7 @@
   function emCorpoACorpo(st, alvo, exceto) { return st.unidades.some(o => o.vivo && o.lado !== alvo.lado && o !== exceto && !incapaz(o) && adjacente(o, alvo)); }
 
   function perfisDeAtaque(u, distancia) {
-    if (u.lado === 'h') {
+    if (u.arma) {
       const a = u.arma; if (!!a.distancia !== !!distancia) return null;
       const base = (a.distancia ? u.per.pont : u.per.luta) + a.bonusItem + (a.bonusAtaque || 0);
       const atrD = a.acuidade ? Math.max(u.attr.for, u.attr.des) : u.attr.for;

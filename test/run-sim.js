@@ -8,11 +8,10 @@ const N = +process.argv[2] || 20;
 const grupo = (process.argv[3] && !process.argv[3].startsWith('--') ? process.argv[3] : 'mari,hana,zaldrin,aria').split(',');
 const VERB = process.argv.includes('--v');
 const iA = process.argv.indexOf('--andar'); const ANDAR0 = iA > 0 ? +process.argv[iA + 1] : 1;
-const SEM_PODERES = process.argv.includes('--sem-poderes'); const MERC = process.argv.includes('--merc'); const ALEATORIO = process.argv.includes('--aleatorio');
-const ORDEM_MERC = ['hana', 'cavaleiro', 'mari', 'aegoron', 'durgalinn', 'zaldrin', 'aria', 'lia', 'safira'];
+const SEM_PODERES = process.argv.includes('--sem-poderes'); let MERC = process.argv.includes('--merc'); const ALEATORIO = process.argv.includes('--aleatorio');
 function contratar(run) {
   if (!MERC || run.merc || !RUN.podeContratar(run) || run.ouro < RUN.custoMerc(run) + 40) return;
-  const disp = RUN.mercDisponiveis(run); const hid = ORDEM_MERC.find(h => disp.includes(h)); if (hid && !RUN.contratarMerc(run, hid)) run.contratou = (run.contratou || 0) + 1;
+  if (!RUN.contratarMerc(run, 'brucutu')) run.contratou = (run.contratou || 0) + 1;
 }
 function sorteio(s) { const ids = D.HEROIS.map(h => h.id); let x = s * 2654435761 >>> 0; const r = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; } return ids.slice(0, 4); }
 
@@ -32,6 +31,11 @@ const recurso = run => Math.min(pvFrac(run), pmFrac(run) + 0.15);
 
 function jogarRun(seed) {
   const run = RUN.novaRun({ herois: ALEATORIO ? sorteio(seed) : grupo, seed, andar: ANDAR0, ouro: ANDAR0 > 1 ? 300 * ANDAR0 : undefined, semPoderes: SEM_PODERES });
+  return jogar(run);
+}
+// joga uma run já criada até o fim (usado também por test/carreira.js)
+function jogar(run, opts) {
+  if (opts) MERC = !!opts.merc;
   const trilha = [];
   while (!run.fim) {
     run.herois.forEach((h, i) => RUN.autoPoderes(run, i));
@@ -73,8 +77,10 @@ function jogarRun(seed) {
   return { run, trilha: trilha.join('') };
 }
 
-let comMerc = 0; const CH = {}; const ANDAR = [0, 1, 2, 3, 4, 5].map(() => ({ chegou: 0, limpo: 0, nivelEntrada: 0, morreu: 0 }));
+let comMerc = 0; module.exports = { jogar, sorteio };
+const CH = {}; const ANDAR = [0, 1, 2, 3, 4, 5].map(() => ({ chegou: 0, limpo: 0, nivelEntrada: 0, morreu: 0 }));
 let vit = 0, niveis = 0, mortes = 0, ouro = 0; const morreu = {}; const t0 = Date.now();
+if (require.main === module) {
 for (let s = 1; s <= N; s++) {
   if (VERB) console.log(`Run ${s}`);
   ANDAR[ANDAR0].chegou++; ANDAR[ANDAR0].nivelEntrada += ANDAR0 > 1 ? RUN.ANDARES[ANDAR0 - 1].teto : 1;
@@ -91,3 +97,4 @@ console.log(`\n${N} runs (${ALEATORIO ? 'grupos sorteados' : grupo.join(', ')}${
 if (MERC) console.log(`Mercenário contratado em ${comMerc} de ${N} runs.`);
 console.log('Fim:', JSON.stringify(morreu)); console.log('Chefes [venceu, perdeu]:', JSON.stringify(CH));
 console.log('Andares:'); for (let a = 1; a <= 5; a++) { const A = ANDAR[a]; if (A.chegou) console.log(`  andar ${a}: chegaram ${A.chegou} (nível ${(A.nivelEntrada / A.chegou).toFixed(1)}), limparam ${A.limpo} (${(100 * A.limpo / A.chegou).toFixed(0)}%), caíram ${A.morreu}`); }
+}
