@@ -10,8 +10,10 @@ const VERB = process.argv.includes('--v');
 const iA = process.argv.indexOf('--andar'); const ANDAR0 = iA > 0 ? +process.argv[iA + 1] : 1;
 const SEM_PODERES = process.argv.includes('--sem-poderes'); let MERC = process.argv.includes('--merc'); const ALEATORIO = process.argv.includes('--aleatorio');
 function contratar(run) {
-  if (!MERC || run.merc || !RUN.podeContratar(run) || run.ouro < RUN.custoMerc(run) + 40) return;
-  if (!RUN.contratarMerc(run, 'brucutu')) run.contratou = (run.contratou || 0) + 1;
+  if (!MERC || run.merc || !RUN.podeContratar(run)) return;
+  const t = run.mercLendario && run.ouro >= RUN.custoMerc(run, 'campeao') + 40 ? 'campeao' : 'brucutu';
+  if (run.ouro < RUN.custoMerc(run, t) + 40) return;
+  if (!RUN.contratarMerc(run, t)) run.contratou = (run.contratou || 0) + 1;
 }
 function sorteio(s) { const ids = D.HEROIS.map(h => h.id); let x = s * 2654435761 >>> 0; const r = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; } return ids.slice(0, 4); }
 

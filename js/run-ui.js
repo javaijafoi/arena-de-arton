@@ -170,17 +170,23 @@
     h += '</div>';
     if (RUN.liberado(m, 'guilda')) h += `<div class="win"><h3>Baú da guilda</h3>${m.bau.length ? '<p class="mut">Leve até 2 itens trazidos de runs anteriores.</p><div class="bau">' + m.bau.map((id, k) => `<button class="itm${P.bau.includes(k) ? ' on' : ''}" data-bau="${k}"><span>${I(id).ic}</span>${esc(I(id).nome)}</button>`).join('') + '</div>' : '<p class="mut">Vazio. Limpe um andar para trazer itens de volta.</p>'}</div>`;
     else h += '<div class="win"><h3>Baú da guilda</h3><p class="mut">🔒 Abre com a guilda, em 1.500 pontos.</p></div>';
+    const ars = RUN.arsenal(m);
+    if (ars.length) {
+      if (!P.lend) P.lend = ars.slice(0, RUN.MAX_LENDARIOS);
+      h += `<div class="win"><h3>Arsenal lendário <small>(${P.lend.length}/${RUN.MAX_LENDARIOS})</small></h3><p class="mut">Vão equipados e voltam no fim da run, aconteça o que acontecer.</p><div class="bau">` + ars.map(id => `<button class="itm${P.lend.includes(id) ? ' on' : ''}" data-lnd="${id}"><span>${I(id).ic}</span>${esc(I(id).nome)}</button>`).join('') + '</div></div>';
+    }
     h += `<div class="pg-ir"><button class="btn gold" id="pIr" ${P.grupo.length ? '' : 'disabled'}>⚔ Começar a run</button></div></div></div>`;
     mostrar(h, 'pre'); ligarBarra();
     ligar('[data-ver]', d => { P.ver = d.ver; telaPre(); });
     $('pTroca').onclick = () => { clique(); const i = P.grupo.indexOf(P.ver); if (i >= 0) P.grupo.splice(i, 1); else if (P.grupo.length < 4) P.grupo.push(P.ver); telaPre(); };
     ligar('[data-mais]', d => { P.compras[d.mais]++; telaPre(); });
     ligar('[data-menos]', d => { P.compras[d.menos] = Math.max(0, P.compras[d.menos] - 1); telaPre(); });
+    ligar('[data-lnd]', d => { const i = P.lend.indexOf(d.lnd); if (i >= 0) P.lend.splice(i, 1); else if (P.lend.length < RUN.MAX_LENDARIOS) P.lend.push(d.lnd); telaPre(); });
     ligar('[data-bau]', d => { const k = +d.bau; const i = P.bau.indexOf(k); if (i >= 0) P.bau.splice(i, 1); else if (P.bau.length < 2) P.bau.push(k); telaPre(); });
     $('pIr').onclick = () => {
       clique(); store.set('arena.grupo', P.grupo);
       const itens = P.bau.map(k => m.bau[k]); m.bau = m.bau.filter((_, k) => !P.bau.includes(k));
-      const run = RUN.novaRun({ ...RUN.cfgDaGuilda(m), herois: P.grupo, ouro: resta, itens });
+      const run = RUN.novaRun({ ...RUN.cfgDaGuilda(m), ...(P.lend ? { lendarios: P.lend } : {}), herois: P.grupo, ouro: resta, itens });
       if (RUN.tem(m, 'armeiro')) for (const x of run.herois) if (!x.equip.arma) x.equip.arma = 'certeira';
       run.bolsa.racao += P.compras.racao; run.bolsa.barraca += P.compras.barraca;
       for (let i = 0; i < P.compras.pocao; i++) RUN.darItem(run, 'pocao');
@@ -446,8 +452,8 @@
     const ficha = t => { const f = RUN.fichaMerc(t, run.nivel); const a = f.distancia || f.ataques[0]; return `ND ${f.ndTxt} · PV ${f.pv} · Defesa ${f.def} · ${esc(a.nome)} +${a.bonus}`; };
     if (run.merc) { const N = RUN.NPC_MERC[run.merc.tipo]; return `<h3>🤝 Mercenário</h3><p><b>${esc(N.nome)}</b> (${ficha(run.merc.tipo)}) luta com o grupo, jogado pela IA. É um NPC: sem classe nem poderes, fica uns níveis abaixo do grupo e melhora quando vocês sobem. Não divide XP nem come ração. Se cair, vai embora.</p><button class="btn sm" id="mDisp">Dispensar</button>`; }
     const c = RUN.custoMerc(run);
-    return `<h3>🤝 Contratar mercenário</h3><p class="mut">Um NPC que luta com o grupo, jogado pela IA. Sem classe nem poderes, fica uns níveis abaixo de vocês e melhora quando o grupo sobe. Não divide XP nem come ração. Se cair, vai embora. Preço: T$ ${c} (50 × nível).</p><div class="bau">` +
-      RUN.mercDisponiveis(run).map(t => { const N = RUN.NPC_MERC[t]; return `<button class="itm" data-merc-c="${t}" ${run.ouro >= c ? '' : 'disabled'}><span class="f" style="background-image:${PX(N.token)};width:28px;height:28px;display:inline-block;background-size:cover"></span>${esc(N.nome)}<em>${esc(N.desc)} ${ficha(t)}</em></button>`; }).join('') + '</div>';
+    return `<h3>🤝 Contratar mercenário</h3><p class="mut">Um NPC que luta com o grupo, jogado pela IA. Sem classe nem poderes, fica uns níveis abaixo de vocês e melhora quando o grupo sobe. Não divide XP nem come ração. Se cair, vai embora. Preço: T$ ${c} (50 × nível)${run.mercLendario ? `; lendários T$ ${RUN.custoMerc(run, 'campeao')} (150 × nível)` : ''}.</p><div class="bau">` +
+      RUN.mercDisponiveis(run).map(t => { const N = RUN.NPC_MERC[t]; const ct = RUN.custoMerc(run, t); return `<button class="itm" data-merc-c="${t}" ${run.ouro >= ct ? '' : 'disabled'}><span class="f" style="background-image:${PX(N.token)};width:28px;height:28px;display:inline-block;background-size:cover"></span>${esc(N.nome)}<em>${esc(N.desc)} ${ficha(t)}${N.lendario ? ' · T$ ' + ct : ''}</em></button>`; }).join('') + '</div>';
   }
   function ligarMerc(run, re) {
     ligar('[data-merc-c]', d => { RUN.contratarMerc(run, d.mercC); salvar(); re(); });
@@ -531,6 +537,7 @@
     { id: 'mestres', nome: 'Salão dos mestres', npc: 'aegoron', quem: 'Sir Aegoron', fala: 'Cada nível é uma lição. Escolha bem o que aprender.', desc: 'Poderes ao subir de nível', marco: 'bolsaRica', ofertas: ['mestres'] },
     { id: 'ferraria', nome: 'Ferraria', npc: 'durgalinn', quem: 'Durgalinn', fala: 'Aço bom custa caro. Aço ruim custa a vida.', desc: 'Arma superior na partida', marco: 'bolsaRica', ofertas: ['armeiro'] },
     { id: 'templo', nome: 'Templo', npc: 'hanalendariana', quem: 'Hanalendariana', fala: 'A fogueira pode trazer alguém de volta. Uma vez.', desc: 'Reviver 1×/run', marco: 'templo', ofertas: ['templo'] },
+    { id: 'lendas', nome: 'Salão das Lendas', npc: 'zaldrin', quem: 'Zaldrin', fala: 'Quem chegou ao fim da estrada pode carregar o que os heróis antigos carregaram.', desc: 'Itens e mercenários lendários', marco: 'lendas', lendas: true, ofertas: ['lendarios'] },
     { id: 'torre', nome: 'Torre de treino', npc: 'zaldrin', quem: 'Zaldrin', fala: 'Treino antes da estrada. Menos susto depois.', desc: 'Começar no nível 2', marco: 'nivel2', ofertas: ['nivel2'] },
   ];
   const ptsTxt = n => n.toLocaleString('pt-BR');
@@ -539,15 +546,16 @@
     let h = barra('Guilda dos Aventureiros', `<span>🏅 ${ptsTxt(m.pontos)}</span><span class="gold">T$ ${ptsTxt(m.ouro)} no cofre</span>`);
     h += '<div class="pgu"><div class="salao"><span class="ban" style="left:14%"></span><span class="ban" style="left:48%"></span><span class="ban" style="left:82%"></span>';
     for (const s of SALAS) {
-      const mk = RUN.MARCOS.find(x => x.id === s.marco); const ok = m.pontos >= mk.pts;
-      const feito = s.ofertas && s.ofertas.every(id => RUN.tem(m, id));
-      h += `<button class="balcao${ok ? '' : ' fechado'}${aba === s.id ? ' on' : ''}" data-sala="${s.id}"><span class="tg">${!ok ? ptsTxt(mk.pts) + ' pts' : feito ? '✓ COMPRADO' : 'ABERTO'}</span>${face(s.npc)}<div class="mesa">${ok ? '' : '🔒 '}${s.nome}<small>${s.desc}</small></div></button>`;
+      const mk = RUN.MARCOS.find(x => x.id === s.marco); const ok = RUN.liberado(m, s.marco);
+      const feito = s.ofertas && s.ofertas.every(id => RUN.tem(m, id)) && (!s.lendas || RUN.LENDARIOS.every(id => (m.arsenal || []).includes(id)));
+      h += `<button class="balcao${ok ? '' : ' fechado'}${aba === s.id ? ' on' : ''}" data-sala="${s.id}"><span class="tg">${!ok ? (mk.vitoria ? '1ª VITÓRIA' : ptsTxt(mk.pts) + ' pts') : feito ? '✓ COMPRADO' : 'ABERTO'}</span>${face(s.npc)}<div class="mesa">${ok ? '' : '🔒 '}${s.nome}<small>${s.desc}</small></div></button>`;
     }
     h += '</div>';
-    const sala = SALAS.find(s => s.id === aba); const mk = RUN.MARCOS.find(x => x.id === sala.marco); const ok = m.pontos >= mk.pts;
+    const sala = SALAS.find(s => s.id === aba); const mk = RUN.MARCOS.find(x => x.id === sala.marco); const ok = RUN.liberado(m, sala.marco);
     h += `<div class="scroll npc-p"><div class="hd">${face(sala.npc)}<div><small class="tag" style="color:#7a5a1a">${sala.nome.toUpperCase()}</small><h3>${esc(sala.quem)}</h3><q>${esc(sala.fala)}</q></div></div>`;
     if (aviso) h += `<p class="redt"><b>${esc(aviso)}</b></p>`;
-    if (!ok) h += `<p><b>${esc(mk.nome)}:</b> ${esc(mk.desc)}</p><p>Faltam <b>${ptsTxt(mk.pts - m.pontos)}</b> pontos. A pontuação é o XP que seus heróis acumulam em todas as runs.</p>`;
+    if (!ok && mk.vitoria) h += `<p><b>${esc(mk.nome)}:</b> ${esc(mk.desc)}</p><p>Vença uma run inteira para abrir.</p>`;
+    else if (!ok) h += `<p><b>${esc(mk.nome)}:</b> ${esc(mk.desc)}</p><p>Faltam <b>${ptsTxt(mk.pts - m.pontos)}</b> pontos. A pontuação é o XP que seus heróis acumulam em todas as runs.</p>`;
     else if (aba === 'bau') {
       h += m.bau.length ? `<p class="mut">Na pré-run você pode levar até 2 destes itens. Vender à guilda rende metade do preço do livro (o ouro fica no cofre).</p><div class="bau">${m.bau.map((id, k) => `<div class="itm"><span>${I(id).ic}</span>${esc(I(id).nome)}<em>${esc(I(id).desc)}</em><button class="btn sm" data-gv="${k}">Vender por T$ ${ptsTxt(Math.floor(I(id).preco / 2))}</button></div>`).join('')}</div>` : '<p class="mut">O baú está vazio. Itens equipados e da mochila voltam com você quando o grupo limpa ao menos um andar.</p>';
     } else if (sala.treino) {
@@ -560,6 +568,10 @@
       h += '</div>';
     } else {
       h += '<div class="ofs">';
+      if (sala.lendas) {
+        h += `<p class="mut">Itens lendários são seus para sempre: até ${RUN.MAX_LENDARIOS} vão equipados em cada run e voltam no fim, mesmo se o grupo cair.</p>`;
+        for (const id of RUN.LENDARIOS) { const it = I(id); const meu = (m.arsenal || []).includes(id); h += `<div class="of"><div><b>${it.ic} ${esc(it.nome)}</b><small>${esc(it.desc)}</small></div>${meu ? '<span class="okt">✓ seu</span>' : `<button class="btn sm${m.ouro >= it.preco ? ' gold' : ''}" data-lend="${id}" ${m.ouro >= it.preco ? '' : 'disabled'}>T$ ${ptsTxt(it.preco)}</button>`}</div>`; }
+      }
       for (const id of sala.ofertas) {
         const M = RUN.MELHORIAS.find(x => x.id === id); const lib = RUN.liberado(m, M.marco); const comprado = RUN.tem(m, id);
         h += `<div class="of"><div><b>${esc(M.nome)}</b><small>${esc(M.desc)}</small></div>${comprado ? '<span class="okt">✓ valendo</span>' : !lib ? `<span class="mut">🔒 ${ptsTxt(RUN.MARCOS.find(x => x.id === M.marco).pts)} pts</span>` : `<button class="btn sm${m.ouro >= M.custo ? ' gold' : ''}" data-melh="${id}" ${m.ouro >= M.custo ? '' : 'disabled'}>T$ ${ptsTxt(M.custo)}</button>`}</div>`;
@@ -571,6 +583,7 @@
     mostrar(h, 'guilda'); ligarBarra();
     ligar('[data-sala]', d => telaGuilda(d.sala));
     ligar('[data-gv]', d => { RUN.vendaGuilda(m, +d.gv); salvar(); telaGuilda('bau'); });
+    ligar('[data-lend]', d => { const e = RUN.comprarLendario(m, d.lend); salvar(); telaGuilda(aba, e); });
     ligar('[data-melh]', d => { const e = RUN.comprarMelhoria(m, d.melh); salvar(); telaGuilda(aba, e); });
     ligar('[data-treino]', d => { const e = RUN.comprarTreino(m, d.treino); salvar(); telaGuilda(aba, e); });
   }
