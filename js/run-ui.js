@@ -180,7 +180,7 @@
     $('pIr').onclick = () => {
       clique(); store.set('arena.grupo', P.grupo);
       const itens = P.bau.map(k => m.bau[k]); m.bau = m.bau.filter((_, k) => !P.bau.includes(k));
-      const run = RUN.novaRun({ herois: P.grupo, ouro: resta, itens, nivel: RUN.tem(m, 'nivel2') ? 2 : 1, treino: m.treino || {} });
+      const run = RUN.novaRun({ ...RUN.cfgDaGuilda(m), herois: P.grupo, ouro: resta, itens });
       if (RUN.tem(m, 'armeiro')) for (const x of run.herois) if (!x.equip.arma) x.equip.arma = 'certeira';
       run.bolsa.racao += P.compras.racao; run.bolsa.barraca += P.compras.barraca;
       for (let i = 0; i < P.compras.pocao; i++) RUN.darItem(run, 'pocao');
@@ -200,7 +200,7 @@
       const he = H(x.hid); const pvM = RUN.pvMaxDe(x, run.nivel), pmM = RUN.pmMaxDe(x, run.nivel); const pv = pvM - x.dano, pm = pmM - x.pmGasto;
       h += `<button class="pc${x.morto ? ' dead' : ''}" data-inv="${hi}" title="${esc(he.nome)}: ver itens${x.pend > 0 && !x.morto ? ' (poder para escolher)' : ''}"><span class="f" style="background-image:${PX(he.token)}">${x.pend > 0 && !x.morto ? '<b class="pend">⬆</b>' : ''}</span><span class="bars">${x.morto ? '<b class="dd">MORTO</b>' : `<i class="hp"><i style="width:${pv / pvM * 100}%"></i></i><small>${pv}/${pvM}</small><i class="mp"><i style="width:${pmM ? pm / pmM * 100 : 0}%"></i></i>`}</span></button>`;
     });
-    if (run.merc) { const he = H(run.merc.hid); const pvM = RUN.pvMaxDe(run.merc, run.nivel); const pv = pvM - run.merc.dano;
+    if (run.merc) { const he = RUN.NPC_MERC[run.merc.tipo]; const pvM = RUN.pvMaxDe(run.merc, run.nivel); const pv = pvM - run.merc.dano;
       h += `<button class="pc merc" data-merc="1" title="${esc(he.nome)}, mercenário (jogado pela IA)"><span class="f" style="background-image:${PX(he.token)}"><b class="pend">🤝</b></span><span class="bars"><i class="hp"><i style="width:${pv / pvM * 100}%"></i></i><small>${pv}/${pvM}</small></span></button>`; }
     h += `</div></div><div class="rv-sub"><span class="chip gold">Nível ${run.nivel}</span><span class="xpbar"><i style="width:${Math.min(100, (run.xp - xp0) / (xp1 - xp0) * 100)}%"></i></span><span class="mut">XP ${run.xp.toLocaleString('pt-BR')} / ${xp1.toLocaleString('pt-BR')}</span><div class="sp"></div>
       <span class="chip" title="Ouro">💰 T$ ${run.ouro}</span><span class="chip" title="Rações">🍖 ${run.bolsa.racao}</span><span class="chip" title="Barraca">⛺ ${run.bolsa.barraca}</span><span class="chip" title="Itens na mochila">🎒 ${run.mochila.length}</span>${botaoPoderes(run)}<button class="btn sm" id="hInv">Itens</button></div>`;
@@ -246,7 +246,7 @@
       const he = H(x.hid); const pvM = RUN.pvMaxDe(x, run.nivel), pmM = RUN.pmMaxDe(x, run.nivel); const pv = pvM - x.dano, pm = pmM - x.pmGasto;
       h += `<button class="htab${x.morto ? ' morto' : ''}" data-inv="${hi}" style="--c:${corH(he)}" title="${esc(he.nome)}: ver itens">${face(he.token)}<div class="t">${esc(he.nome.split(' ')[0])}${x.morto ? ' ✝' : x.pend > 0 ? ' ⬆' : ''}<div class="b"><i style="width:${x.morto ? 0 : pv / pvM * 100}%;${pv / pvM < .35 ? 'background:var(--red)' : ''}"></i></div><div class="b bm"><i style="width:${pmM ? pm / pmM * 100 : 0}%"></i></div></div></button>`;
     });
-    h += `<div class="win pm-res">Nível <b class="gold">${run.nivel}</b><br>✦ XP ${run.xp.toLocaleString('pt-BR')} / ${xp1.toLocaleString('pt-BR')}<br>⛺ Barracas ${run.bolsa.barraca}${run.merc ? `<br>🤝 ${esc(H(run.merc.hid).nome.split(' ')[0])} (mercenário)` : ''}<button class="btn sm" id="hInv">🎒 Itens</button></div></div>`;
+    h += `<div class="win pm-res">Nível <b class="gold">${run.nivel}</b><br>✦ XP ${run.xp.toLocaleString('pt-BR')} / ${xp1.toLocaleString('pt-BR')}<br>⛺ Barracas ${run.bolsa.barraca}${run.merc ? `<br>🤝 ${esc(RUN.NPC_MERC[run.merc.tipo].nome)} (mercenário)` : ''}<button class="btn sm" id="hInv">🎒 Itens</button></div></div>`;
     // mapa
     const img = TOK.mapa(retrato ? 'arton-retrato.png' : 'arton-paisagem.png');
     let svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none">';
@@ -442,10 +442,12 @@
 
   /* ---------- mercenário (loja e cidade): 5º personagem jogado pela IA ---------- */
   function blocoMerc(run) {
-    if (run.merc) { const he = H(run.merc.hid); return `<h3>🤝 Mercenário</h3><p><b>${esc(he.nome)}</b> (${D.CLASSES[he.classe].nome}) luta com o grupo, jogado pela IA. Sobe de nível com vocês, escolhe os próprios poderes e não divide XP nem come ração. Se cair, vai embora.</p><button class="btn sm" id="mDisp">Dispensar</button>`; }
+    if (run.mercLiberado === false) return '';
+    const ficha = t => { const f = RUN.fichaMerc(t, run.nivel); const a = f.distancia || f.ataques[0]; return `ND ${f.ndTxt} · PV ${f.pv} · Defesa ${f.def} · ${esc(a.nome)} +${a.bonus}`; };
+    if (run.merc) { const N = RUN.NPC_MERC[run.merc.tipo]; return `<h3>🤝 Mercenário</h3><p><b>${esc(N.nome)}</b> (${ficha(run.merc.tipo)}) luta com o grupo, jogado pela IA. É um NPC: sem classe nem poderes, fica uns níveis abaixo do grupo e melhora quando vocês sobem. Não divide XP nem come ração. Se cair, vai embora.</p><button class="btn sm" id="mDisp">Dispensar</button>`; }
     const c = RUN.custoMerc(run);
-    return `<h3>🤝 Contratar mercenário</h3><p class="mut">Um 5º personagem jogado pela IA. Sobe de nível sozinho com o grupo, escolhe os próprios poderes e não divide XP nem come ração. Se cair, vai embora. Preço: T$ ${c} (50 × nível).</p><div class="bau">` +
-      RUN.mercDisponiveis(run).map(id => { const he = H(id); return `<button class="itm" data-merc-c="${id}" ${run.ouro >= c ? '' : 'disabled'}><span class="f" style="background-image:${PX(he.token)};width:28px;height:28px;display:inline-block;background-size:cover"></span>${esc(he.nome)}<em>${D.CLASSES[he.classe].nome}. ${esc(D.CLASSES[he.classe].descricao)}</em></button>`; }).join('') + '</div>';
+    return `<h3>🤝 Contratar mercenário</h3><p class="mut">Um NPC que luta com o grupo, jogado pela IA. Sem classe nem poderes, fica uns níveis abaixo de vocês e melhora quando o grupo sobe. Não divide XP nem come ração. Se cair, vai embora. Preço: T$ ${c} (50 × nível).</p><div class="bau">` +
+      RUN.mercDisponiveis(run).map(t => { const N = RUN.NPC_MERC[t]; return `<button class="itm" data-merc-c="${t}" ${run.ouro >= c ? '' : 'disabled'}><span class="f" style="background-image:${PX(N.token)};width:28px;height:28px;display:inline-block;background-size:cover"></span>${esc(N.nome)}<em>${esc(N.desc)} ${ficha(t)}</em></button>`; }).join('') + '</div>';
   }
   function ligarMerc(run, re) {
     ligar('[data-merc-c]', d => { RUN.contratarMerc(run, d.mercC); salvar(); re(); });
@@ -525,6 +527,8 @@
     { id: 'bau', nome: 'Baú e Vitrine', npc: 'aegoron', quem: 'Sir Aegoron', fala: 'Guardo o que vocês trazem. Vendo pela metade, nem um tibar a mais.', desc: 'Itens trazidos de volta', marco: 'guilda' },
     { id: 'tesouraria', nome: 'Tesouraria', npc: 'dame-lia', quem: 'Dame Lia', fala: 'Ouro parado não salva ninguém. Ouro bem guardado, às vezes salva.', desc: 'Banco e família rica', marco: 'guilda', ofertas: ['banco', 'bolsaRica'] },
     { id: 'quartel', nome: 'Pátio de treino', npc: 'mari-labareda', quem: 'Mari Labareda', fala: 'Suor no pátio, menos sangue na estrada. Pague o mestre e treine a classe.', desc: '+PV por classe', marco: 'guilda', treino: true },
+    { id: 'taverna', nome: 'Taverna dos contratos', npc: 'capanga', quem: 'Um brucutu', fala: 'Pagando bem, eu bato em quem você mandar.', desc: 'Contratar mercenários', marco: 'guilda', ofertas: ['contratos'] },
+    { id: 'mestres', nome: 'Salão dos mestres', npc: 'aegoron', quem: 'Sir Aegoron', fala: 'Cada nível é uma lição. Escolha bem o que aprender.', desc: 'Poderes ao subir de nível', marco: 'bolsaRica', ofertas: ['mestres'] },
     { id: 'ferraria', nome: 'Ferraria', npc: 'durgalinn', quem: 'Durgalinn', fala: 'Aço bom custa caro. Aço ruim custa a vida.', desc: 'Arma superior na partida', marco: 'bolsaRica', ofertas: ['armeiro'] },
     { id: 'templo', nome: 'Templo', npc: 'hanalendariana', quem: 'Hanalendariana', fala: 'A fogueira pode trazer alguém de volta. Uma vez.', desc: 'Reviver 1×/run', marco: 'templo', ofertas: ['templo'] },
     { id: 'torre', nome: 'Torre de treino', npc: 'zaldrin', quem: 'Zaldrin', fala: 'Treino antes da estrada. Menos susto depois.', desc: 'Começar no nível 2', marco: 'nivel2', ofertas: ['nivel2'] },

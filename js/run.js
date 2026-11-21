@@ -5,7 +5,7 @@
   'use strict';
   const node = typeof module !== 'undefined' && module.exports;
   const D = node ? require('./data.js') : root.T20DATA;
-  if (node) require('./bestiario.js'); // soma as criaturas dos andares 2 a 5 em D.CRIATURAS
+  const BEST = node ? require('./bestiario.js') : root.T20BESTIARIO; // soma as criaturas dos andares 2 a 5 em D.CRIATURAS
   const R = node ? require('./rules.js') : root.T20;
   const PODER = node ? require('./poderes.js') : root.T20PODERES;
 
@@ -235,7 +235,7 @@
     const run = {
       v: 1, seed, sorte: { seed: seed ^ 0x5bd1e995 }, andar: 1, xp: 0, nivel: 1, ouro: cfg.ouro != null ? cfg.ouro : 150,
       herois: cfg.herois.slice(0, 4).map(hid => ({ hid, dano: 0, pmGasto: 0, morto: false, equip: { arma: null, armadura: null, acessorio: null }, cinto: ['pocao', null, null], pvTreino: (cfg.treino && cfg.treino[(D.HEROIS.find(x => x.id === hid) || {}).classe]) * PV_TREINO || 0, ...(cfg.semPoderes ? {} : { poderes: [], pend: 0 }) })),
-      merc: null,
+      merc: null, mercLiberado: cfg.mercLiberado !== undefined ? !!cfg.mercLiberado : true,
       bolsa: { racao: 4, barraca: 0, corda: 0 }, mochila: [],
       mapa: null, atual: 0, caminho: [0], log: [], fim: null, pendente: null,
       stats: { batalhas: 0, elites: 0, abates: 0, xp: 0, ouroGanho: 0, mortes: 0, rodadas: 0 },
@@ -315,22 +315,22 @@
     }
   }
   function unidadeHeroi(h, nivel, idx) { const u = R.criarHeroi(h.hid, nivel, idx, h.poderes); aplicarItens(u, h, nivel); return u; }
-  function pvMaxDe(h, nivel) { return unidadeHeroi(h, nivel, 0).pvMax; }
-  function pmMaxDe(h, nivel) { return unidadeHeroi(h, nivel, 0).pmMax; }
+  function pvMaxDe(h, nivel) { return h.merc ? fichaMerc(h.tipo, nivel).pv : unidadeHeroi(h, nivel, 0).pvMax; }
+  function pmMaxDe(h, nivel) { return h.merc ? fichaMerc(h.tipo, nivel).pm || 0 : unidadeHeroi(h, nivel, 0).pmMax; }
 
   function prepararBatalha(run, n) {
     n = n || noAtual(run);
-    const g = inimigosDoNo(run, n); const grupo = vivos(run).concat(run.merc ? [run.merc] : []);
+    const g = inimigosDoNo(run, n); const grupo = vivos(run);
     if (run.merc) atualizarMerc(run);
-    const cfg = { herois: grupo.map(h => h.hid), poderes: grupo.map(h => h.poderes || null), merc: run.merc ? grupo.length - 1 : -1, nivel: run.nivel, inimigos: g.ids, mapa: n.mapaId, seed: (run.seed ^ (n.id * 7919) ^ (run.stats.batalhas * 104729) ^ ((run.andar || 1) * 31337)) >>> 0, run: true };
-    return { cfg, grupo, chefe: g.chefe || null, nd: g.nd };
+    const cfg = { herois: grupo.map(h => h.hid), poderes: grupo.map(h => h.poderes || null), mercCriatura: run.merc ? criaturaMerc(run.merc.tipo, run.nivel) : null, nivel: run.nivel, inimigos: g.ids, mapa: n.mapaId, seed: (run.seed ^ (n.id * 7919) ^ (run.stats.batalhas * 104729) ^ ((run.andar || 1) * 31337)) >>> 0, run: true };
+    return { cfg, grupo: run.merc ? grupo.concat([run.merc]) : grupo, chefe: g.chefe || null, nd: g.nd };
   }
   // chamado logo depois de R.novaBatalha: ajusta heróis e o chefe
   function ajustarBatalha(run, st, prep) {
     const hs = st.unidades.filter(u => u.lado === 'h');
     hs.forEach((u, i) => {
       const h = prep.grupo[i]; u.runIdx = h.merc ? -1 : run.herois.indexOf(h);
-      aplicarItens(u, h, run.nivel);
+      if (!h.merc) aplicarItens(u, h, run.nivel);
       u.pv = Math.max(1, u.pvMax - h.dano); u.pm = Math.max(0, u.pmMax - h.pmGasto);
       u.cinto = h.cinto.slice();
     });
@@ -610,25 +610,38 @@
   function autoPoderes(run, hi) { const h = run.herois[hi]; while (h && h.poderes && h.pend > 0) { const p = PODER.escolhaIA(h.hid, run.nivel, h.poderes); if (!p) { h.pend = 0; break; } escolherPoder(run, hi, p); } }
   const poderesPendentes = run => run.herois.reduce((a, h) => a + (h.poderes && !h.morto ? h.pend || 0 : 0), 0);
 
-  /* ---------- mercenário: 5º personagem, jogado pela IA, sobe de nível com o grupo e não divide XP nem come ração ---------- */
-  const custoMerc = run => 50 * run.nivel;
-  function mercDisponiveis(run) { const usados = new Set(run.herois.map(h => h.hid)); return D.HEROIS.filter(H => !usados.has(H.id)).map(H => H.id); }
-  function podeContratar(run) { return !run.merc && (run.pendente === 'loja' || !!run.proxAndar); }
-  function contratarMerc(run, hid) {
-    if (!podeContratar(run)) return 'Só dá para contratar na loja ou na cidade, e um por vez.';
-    if (!mercDisponiveis(run).includes(hid)) return 'Esse herói não está disponível.';
-    const c = custoMerc(run); if (run.ouro < c) return 'Ouro insuficiente.';
-    run.ouro -= c; run.merc = { hid, merc: true, dano: 0, pmGasto: 0, morto: false, equip: { arma: null, armadura: null, acessorio: null }, cinto: [null, null, null], nivel: run.nivel };
-    atualizarMerc(run);
-    run.log.push(`🤝 ${D.HEROIS.find(x => x.id === hid).nome} entra no grupo como mercenário (T$ ${c}).`); return null;
+  /* ---------- mercenário: um NPC (ficha simples, como as do Guia de NPCs), jogado pela IA ----------
+     Não é herói com classe: não tem poderes nem habilidades, só ataque. Tem ND igual à metade do
+     nível do grupo (no 1º nível é ND 1/2, como o brucutu do Guia de NPCs),
+     não divide XP nem come ração. Se cair, vai embora. */
+  const NPC_MERC = {
+    brucutu: { nome: 'Brucutu', papel: 'bruto', arma: 'Clava', dano: 'impacto', token: 'capanga', desc: 'Força bruta corpo a corpo.' },
+    guarda: { nome: 'Guarda', papel: 'tanque', arma: 'Lança', dano: 'perfuração', token: 'soldado-purista', desc: 'Lento e duro de derrubar; segura a linha.' },
+    besteiro: { nome: 'Besteiro', papel: 'atirador', arma: 'Adaga', tiro: 'Besta pesada', token: 'saqueadora', desc: 'Atira de longe.' },
+  };
+  const ndMerc = nivel => Math.max(0.5, Math.floor(nivel / 2));
+  function criaturaMerc(tipo, nivel) {
+    const N = NPC_MERC[tipo]; const nd = ndMerc(nivel); const id = `merc_${tipo}_${nd}`;
+    if (!D.CRIATURAS[id]) { const c = BEST.criatura(N.nome, nd, N.papel, { arma: N.arma, dano: N.dano, tiro: N.tiro, token: N.token, tipo: 'humanoide' }); c.ndTxt = nd === 0.5 ? '1/2' : String(nd); c.merc = true; D.CRIATURAS[id] = c; }
+    return id;
   }
-  function dispensarMerc(run) { if (!run.merc) return 'Não há mercenário.'; run.log.push(`👋 ${D.HEROIS.find(x => x.id === run.merc.hid).nome} deixa o grupo.`); run.merc = null; return null; }
-  // o mercenário escolhe os próprios poderes (a IA) e acompanha o nível do grupo
+  const custoMerc = run => 50 * run.nivel;
+  function mercDisponiveis() { return Object.keys(NPC_MERC); }
+  function podeContratar(run) { return run.mercLiberado !== false && !run.merc && (run.pendente === 'loja' || !!run.proxAndar); }
+  function contratarMerc(run, tipo) {
+    if (run.mercLiberado === false) return 'Contratar mercenários se libera na guilda.';
+    if (!podeContratar(run)) return 'Só dá para contratar na loja ou na cidade, e um por vez.';
+    if (!NPC_MERC[tipo]) return 'Esse mercenário não existe.';
+    const c = custoMerc(run); if (run.ouro < c) return 'Ouro insuficiente.';
+    run.ouro -= c; run.merc = { tipo, merc: true, dano: 0, pmGasto: 0, morto: false, cinto: [null, null, null], nivel: run.nivel };
+    run.log.push(`🤝 ${NPC_MERC[tipo].nome} entra no grupo como mercenário (T$ ${c}).`); return null;
+  }
+  function dispensarMerc(run) { if (!run.merc) return 'Não há mercenário.'; run.log.push(`👋 ${NPC_MERC[run.merc.tipo].nome} deixa o grupo.`); run.merc = null; return null; }
   function atualizarMerc(run) {
     const m = run.merc; if (!m) return;
     if (m.nivel !== run.nivel) { const pvA = pvMaxDe(m, m.nivel), pvB = pvMaxDe(m, run.nivel); m.dano = Math.max(0, m.dano - Math.max(0, pvB - pvA)); m.nivel = run.nivel; }
-    m.poderes = run.herois.some(h => h.poderes) ? PODER.poderesIA(m.hid, run.nivel) : undefined;
   }
+  function fichaMerc(tipo, nivel) { return D.CRIATURAS[criaturaMerc(tipo, nivel)]; }
 
   /* ---------- progresso permanente ---------- */
   const MARCOS = [
@@ -642,12 +655,18 @@
   // pontos liberam o acesso; o ouro do cofre paga. Melhorias compradas valem para todas as runs.
   const PV_TREINO = 4; const TREINO_CUSTO = [800, 1600, 3200];
   const MELHORIAS = [
-    { id: 'banco', marco: 'guilda', custo: 1500, nome: 'Banco', desc: 'Guarda 25% do ouro da run no cofre mesmo se o grupo cair.' },
-    { id: 'armeiro', marco: 'bolsaRica', custo: 3000, nome: 'Armeiro', desc: 'Cada herói começa a run com uma arma superior (certeira).' },
-    { id: 'bolsaRica', marco: 'bolsaRica', custo: 2000, nome: 'Família rica', desc: 'Começa a run com T$ 100 a mais.' },
-    { id: 'templo', marco: 'templo', custo: 4000, nome: 'Templo', desc: 'Uma vez por run, reviva um herói por T$ 200 na fogueira.' },
-    { id: 'nivel2', marco: 'nivel2', custo: 8000, nome: 'Torre de treino', desc: 'O grupo começa a run no nível 2.' },
+    { id: 'banco', marco: 'guilda', custo: 5000, nome: 'Banco', desc: 'Guarda 25% do ouro da run no cofre mesmo se o grupo cair.' },
+    { id: 'armeiro', marco: 'bolsaRica', custo: 20000, nome: 'Armeiro', desc: 'Cada herói começa a run com uma arma superior (certeira).' },
+    { id: 'bolsaRica', marco: 'bolsaRica', custo: 12000, nome: 'Família rica', desc: 'Começa a run com T$ 100 a mais.' },
+    { id: 'templo', marco: 'templo', custo: 30000, nome: 'Templo', desc: 'Uma vez por run, reviva um herói por T$ 200 na fogueira.' },
+    { id: 'nivel2', marco: 'nivel2', custo: 60000, nome: 'Torre de treino', desc: 'O grupo começa a run no nível 2.' },
+    { id: 'contratos', marco: 'guilda', custo: 12000, nome: 'Mural de contratos', desc: 'Libera contratar um mercenário (NPC jogado pela IA) nas lojas e cidades.' },
+    { id: 'mestres', marco: 'bolsaRica', custo: 40000, nome: 'Mestres da guilda', desc: 'Ao subir de nível, cada herói escolhe um poder do Livro Base (em vez do bônus genérico).' },
   ];
+  // configuração de uma run nova a partir do que a guilda já liberou
+  function cfgDaGuilda(meta) {
+    return { ouro: 150 + (tem(meta, 'bolsaRica') ? 100 : 0), nivel: tem(meta, 'nivel2') ? 2 : 1, treino: meta.treino || {}, semPoderes: !tem(meta, 'mestres'), mercLiberado: tem(meta, 'contratos') };
+  }
   function tem(meta, id) { return !!(meta.compras && meta.compras[id]) && liberado(meta, (MELHORIAS.find(x => x.id === id) || {}).marco); }
   function comprarMelhoria(meta, id) {
     const M = MELHORIAS.find(x => x.id === id); if (!M) return 'Não existe.'; if (!liberado(meta, M.marco)) return 'Ainda bloqueado.';
@@ -687,11 +706,11 @@
 
   const API = {
     ITENS, EVENTOS, TEMAS, CHEFES, ANDARES, ULTIMO_ANDAR, proximoAndar, reviverNaCidade, custoReviverAndar, MARCOS, XP_NIVEL, PERICIAS, MAX_CINTO, LOJA_FIXOS,
-    poderesDisponiveis, escolherPoder, autoPoderes, poderesPendentes, custoMerc, mercDisponiveis, podeContratar, contratarMerc, dispensarMerc, atualizarMerc, novaRun, gerarMapa, proximos, noAtual, avancar, sairDoNo, vivos, inimigosDoNo, ndEncontro, ndTxt, nivelDoXP,
+    poderesDisponiveis, escolherPoder, autoPoderes, poderesPendentes, custoMerc, mercDisponiveis, podeContratar, NPC_MERC, fichaMerc, ndMerc, criaturaMerc, contratarMerc, dispensarMerc, atualizarMerc, novaRun, gerarMapa, proximos, noAtual, avancar, sairDoNo, vivos, inimigosDoNo, ndEncontro, ndTxt, nivelDoXP,
     prepararBatalha, ajustarBatalha, concluirBatalha, unidadeHeroi, pvMaxDe, pmMaxDe,
     darItem, equipar, desequipar, estoqueLoja, comprar, vender, precoVenda,
     opcoesDescanso, descansar, racoesNecessarias, escolhasEvento, resolverEvento, bonusPericia,
-    novoMeta, liberado, encerrarRun, vendaGuilda, MELHORIAS, tem, comprarMelhoria, custoTreino, comprarTreino, PV_TREINO, TREINO_CUSTO,
+    novoMeta, liberado, encerrarRun, cfgDaGuilda, vendaGuilda, MELHORIAS, tem, comprarMelhoria, custoTreino, comprarTreino, PV_TREINO, TREINO_CUSTO,
   };
   if (node) module.exports = API; else root.T20RUN = API;
 })(this);

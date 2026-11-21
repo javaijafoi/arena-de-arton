@@ -10,7 +10,7 @@
   const vivosInimigos = (st, u) => R.inimigosDe(st, u).filter(o => !R.incapaz(o));
   const fracao = o => o.pv / o.pvMax;
   const ehConjurador = u => (u.magias || []).length > 0 && !(u.ataques && u.ataques.length && !u.pm);
-  const atiraDeLonge = u => (u.lado === 'h' && u.arma && u.arma.distancia) || (u.lado === 'm' && u.distancia && u.ataques[0].bonus < u.distancia.bonus);
+  const atiraDeLonge = u => (u.lado === 'h' && u.arma && u.arma.distancia) || (!u.arma && u.distancia && u.ataques[0].bonus < u.distancia.bonus);
 
   // melhor nível de aprimoramento "dano" que cabe no orçamento
   function aprimDano(u, mid, base) {
