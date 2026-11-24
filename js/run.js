@@ -452,8 +452,8 @@
   function racoesNecessarias(run) { return vivos(run).filter(h => !semComer(h)).length; }
   function opcoesDescanso(run, n) {
     const out = []; const precisa = racoesNecessarias(run);
-    out.push({ id: 'rapido', nome: 'Descanso rápido', desc: 'Recupera metade dos PV e PM perdidos.', custo: `${precisa} ração`, pode: run.bolsa.racao >= precisa });
-    if (n && (n.tipo === 'descanso')) out.push({ id: 'longo', nome: 'Descanso longo', desc: 'Recupera todos os PV e PM.', custo: `${precisa} ração + barraca`, pode: run.bolsa.racao >= precisa && run.bolsa.barraca > 0 });
+    out.push({ id: 'rapido', nome: 'Descanso rápido', desc: 'Recupera metade dos PV e PM perdidos.', custo: `${precisa} ${precisa === 1 ? 'ração' : 'rações'}`, pode: run.bolsa.racao >= precisa });
+    if (n && (n.tipo === 'descanso')) out.push({ id: 'longo', nome: 'Descanso longo', desc: 'Recupera todos os PV e PM.', custo: `${precisa} ${precisa === 1 ? 'ração' : 'rações'} + barraca`, pode: run.bolsa.racao >= precisa && run.bolsa.barraca > 0 });
     if (n && n.tipo === 'taverna') out.push({ id: 'quarto', nome: 'Quarto na taverna', desc: 'Cama, comida quente: recupera tudo.', custo: 'T$ 90', pode: run.ouro >= 90 });
     return out;
   }

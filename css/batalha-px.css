@@ -82,3 +82,6 @@ body:not(.em-run){background:#1a1322;background-image:linear-gradient(45deg,#000
 #top .sub{background:none;border:0;padding:0}
 body:not(.em-run) footer{font-family:'VT323',monospace;font-size:17px!important;color:var(--muted)}
 body:not(.em-run) footer b{font-weight:400;color:#e9d9a6}
+
+/* telas baixas: retrato do cartão mais baixo para as ações caberem sem rolar */
+@media (min-width:1001px) and (max-height:860px){#game .big{aspect-ratio:2.6}}

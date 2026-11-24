@@ -5,6 +5,8 @@
   const S = 52, COLS = 16, ROWS = 12, W = COLS * S, H = ROWS * S;
   const $ = id => document.getElementById(id);
   const TOK = window.ARENA_TOK;
+  // nome curto para rótulos: tira o título (Sir, Dame) e fica com a primeira palavra
+  const curto = n => String(n || '').replace(/^(Sir|Dame|Lady|Lorde)\s+/, '').split(' ')[0];
   const ICON_COND = { atordoado: '💫', ofuscado: '🌟', abalado: '😨', apavorado: '😱', fatigado: '😓', exausto: '🥵', vulneravel: '🎯', fraco: '🥀', enredado: '🕸', imovel: '⛓', lento: '🐌', caido: '⤵', inconsciente: '💤', emChamas: '🔥', acido: '🧪', paralisado: '🧊', sangrando: '🩸', fintado: '🃏', desafiado: '⚔', cego: '🕶', agarrado: '🤼' };
   const ICON_BUFF = { furia: '😡', bencao: '✨', oracao: '🙏', inspiracao: '🎵', defMagia: '🛡', escudoFe: '🛡', armaEspiritual: '🗡', velocidade: '⚡', marca: '🎯', perdicao: '☠', baluarte: '🛡', desafio: '⚔', agarrando: '🤼' };
   const NOME_BUFF = { furia: 'Fúria', bencao: 'Bênção', oracao: 'Oração', inspiracao: 'Inspirado', defMagia: 'Armadura Arcana', escudoFe: 'Escudo da Fé', armaEspiritual: 'Arma Espiritual', velocidade: 'Velocidade', marca: 'Marca da Presa', perdicao: 'Perdição', baluarte: 'Baluarte', desafio: 'Desafiando', agarrando: 'Agarrando' };
@@ -43,7 +45,12 @@
   $('selLvl').oninput = e => { $('lvlV').textContent = e.target.value; };
   $('selEnc').onchange = e => { $('selLvl').value = D.ENCONTROS[+e.target.value].nivel; $('lvlV').textContent = $('selLvl').value; };
   $('bLivre').onclick = () => iniciar('livre', +$('selEnc').value, +$('selLvl').value);
-  $('tMenu').onclick = () => voltarMenu();
+  // sair no meio da luta pede um segundo toque (a batalha em andamento se perde)
+  $('tMenu').onclick = () => {
+    const b = $('tMenu'); const emLuta = G.st && !G.st.fim;
+    if (emLuta && !b.dataset.ok) { b.dataset.ok = 1; b.textContent = 'Toque de novo para sair'; clearTimeout(b._t); b._t = setTimeout(() => { delete b.dataset.ok; b.textContent = '◀ Sair'; }, 3000); return; }
+    delete b.dataset.ok; b.textContent = '◀ Sair'; voltarMenu();
+  };
 
   function togs() {
     $('tIA').textContent = G.ia.m ? '🤖 Inimigos: IA' : '🎮 Inimigos: você'; $('tIA').classList.toggle('on', G.ia.m);
@@ -71,9 +78,9 @@
     G.sel = null; G.mods = {}; G.logN = 0; G.undo = null; G.stats = {}; G.inspect = null; $('logIn').innerHTML = '';
     $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('tMenu').classList.remove('hidden'); $('over').classList.add('hidden'); document.body.classList.remove('em-run', 'px-treino');
     $('topSub').textContent = `${E.nome} · nível ${G.nivel}${modo === 'livre' ? ' · batalha livre' : ''}`;
+    G.prep = G.ia.h ? null : { sel: null }; window.scrollTo(0, 0);
     desenharMapa(G.st.mapa); criarTokens(); ajustar();
     atualizar();
-    G.prep = G.ia.h ? null : { sel: null };
     if (!G.prep) R.comecar(G.st);
     (async () => { G.busy = true; await banner(E.nome); if (G.prep) { G.busy = false; atualizar(); flutuarTopo('Posicione seus heróis'); return; } await tocar(G.st.eventosIniciais || []); G.busy = false; atualizar(); seguir(); })();
   }
@@ -84,8 +91,9 @@
     G.sel = null; G.mods = {}; G.logN = 0; G.undo = null; G.stats = {}; G.inspect = null; $('logIn').innerHTML = '';
     $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('tMenu').classList.remove('hidden'); $('over').classList.add('hidden'); document.body.classList.remove('em-run', 'px-treino');
     $('topSub').textContent = `${o.nome} · nível ${G.nivel} · run`;
+    G.prep = G.ia.h ? null : { sel: null }; window.scrollTo(0, 0);
     desenharMapa(G.st.mapa); criarTokens(); ajustar(); atualizar();
-    G.prep = G.ia.h ? null : { sel: null }; if (!G.prep) R.comecar(G.st);
+    if (!G.prep) R.comecar(G.st);
     (async () => { G.busy = true; await banner(o.nome); if (G.prep) { G.busy = false; atualizar(); flutuarTopo('Posicione seus heróis'); return; } await tocar(G.st.eventosIniciais || []); G.busy = false; atualizar(); seguir(); })();
   }
   function flutuarTopo(txt) { const h = R.unidadeEm(G.st, R.zonaHerois(G.st)[0].x, R.zonaHerois(G.st)[0].y) || G.st.unidades.find(u => u.lado === 'h'); if (h) flutuar(h, txt, 'txt'); }
@@ -97,8 +105,8 @@
     const st = G.st, el = $('acts'); const sel = G.prep.sel && R.porId(st, G.prep.sel);
     let h = `<h3>Posicionamento</h3><div class="desc">Antes da luta, arrume o grupo na <b style="color:#ffd65a">zona dourada</b> do seu canto: clique num herói e depois numa casa da zona. Clicar em outro herói troca os dois de lugar.</div>`;
     h += `<button class="btn gold" id="bComecar" style="width:100%;margin:4px 0">⚔ Começar batalha</button>`;
-    for (const u of st.unidades.filter(o => o.lado === 'h')) h += `<button class="abtn${sel === u ? ' on' : ''}" data-pp="${u.id}"><span class="ic"><span class="mini" style="background-image:${TOK(u.token)}"></span></span>${u.nome.split(' ')[0]}<span class="c">${D.CLASSES[u.classe] ? D.CLASSES[u.classe].nome || u.classe : u.classe}</span></button>`;
-    h += `<div class="hint">${sel ? '👉 Agora clique numa casa dourada para ' + sel.nome.split(' ')[0] + '.' : 'Dica: guerreiros na frente, magos e arqueiros atrás.'}</div>`;
+    for (const u of st.unidades.filter(o => o.lado === 'h')) h += `<button class="abtn${sel === u ? ' on' : ''}" data-pp="${u.id}"><span class="ic"><span class="mini" style="background-image:${TOK(u.token)}"></span></span>${curto(u.nome)}<span class="c">${D.CLASSES[u.classe] ? D.CLASSES[u.classe].nome || u.classe : u.classe}</span></button>`;
+    h += `<div class="hint">${sel ? '👉 Agora clique numa casa dourada para ' + curto(sel.nome) + '.' : 'Dica: guerreiros na frente, magos e arqueiros atrás.'}</div>`;
     el.innerHTML = h;
     el.querySelectorAll('[data-pp]').forEach(x => x.onclick = () => { SOM.tocar('clique'); G.prep.sel = G.prep.sel === x.dataset.pp ? null : x.dataset.pp; if (G.prep.sel) { G.inspect = G.prep.sel; atualizarCartao(); } painelPreparo(); desenharDestaques(); });
     $('bComecar').onclick = () => comecarBatalha();
@@ -381,7 +389,7 @@
     const st = G.st; const o = $('order'); const n = st.ordem.length; let html = `<div class="rd">RODADA<b>${st.rodada}</b></div>`;
     for (let k = 0; k < n; k++) {
       const id = st.ordem[(st.vez + k) % n]; const u = R.porId(st, id); if (!u.vivo) continue;
-      html += `<div class="op ${u.lado}${k === 0 ? ' now' : ''}${R.incapaz(u) ? ' ko' : ''}" data-id="${u.id}"><div style="background-image:${TOK.px(u.token)}"><i>${st.iniciativa[u.id]}</i></div><span>${u.nome.split(' ')[0]}</span></div>`;
+      html += `<div class="op ${u.lado}${k === 0 ? ' now' : ''}${R.incapaz(u) ? ' ko' : ''}" data-id="${u.id}"><div style="background-image:${TOK.px(u.token)}"><i>${st.iniciativa[u.id]}</i></div><span>${curto(u.nome)}</span></div>`;
     }
     o.innerHTML = html;
     o.querySelectorAll('.op').forEach(el => { el.onclick = () => { G.inspect = el.dataset.id; atualizarCartao(); }; });
@@ -433,9 +441,9 @@
     if (!u || st.fim) { el.innerHTML = '<h3>Batalha encerrada</h3>'; return; }
     const ac = u.acoes;
     const pips = `<span class="pips"><span class="pip ${ac.padrao ? 'ok' : ''}">PADRÃO</span><span class="pip ${ac.movimento ? 'ok' : ''}">MOV.</span>${u.buff.velocidade ? `<span class="pip ${ac.extra ? 'ok' : ''}">EXTRA</span>` : ''}</span>`;
-    if (ehIA(u)) { el.innerHTML = `<h3>${u.nome.split(' ')[0]} ${pips}</h3><div class="hint">🤖 A IA está jogando este turno…</div>`; return; }
+    if (ehIA(u)) { el.innerHTML = `<h3>${curto(u.nome)} ${pips}</h3><div class="hint">🤖 A IA está jogando este turno…</div>`; return; }
     const ops = R.opcoes(st); G.ops = ops; const sel = G.sel || {};
-    let h = `<h3>Turno de ${u.nome.split(' ')[0]} ${pips}</h3>`;
+    let h = `<h3>Turno de ${curto(u.nome)} ${pips}</h3>`;
     const b = (id, ic, txt, pode, extra, on) => `<button class="abtn${on ? ' on' : ''}" data-a="${id}" ${pode ? '' : 'disabled'}><span class="ic">${ic}</span>${txt}${extra ? `<span class="c">${extra}</span>` : ''}</button>`;
     const temCac = !!R.perfisDeAtaque(u, false), temDist = !!R.perfisDeAtaque(u, true);
     if (temCac) h += b('atacar', '⚔', 'Atacar', ops.atacar.length > 0, ops.atacar.length ? ops.atacar.length + ' alvo' + (ops.atacar.length > 1 ? 's' : '') : 'ninguém adjacente', sel.modo === 'atacar');
@@ -686,7 +694,7 @@
         <span>Dano se acertar tudo</span><b>${totMin}–${totMax}</b><span>Crítico</span><b>${pv[0].margem}+ (×${pv[0].mult})</b><span>PV do alvo</span><b>${Math.max(0, o.pv)} / ${o.pvMax}</b></div>
         ${pv[0].mods.length ? `<div class="mods">${[...new Set(pv.flatMap(p => p.mods))].join(' · ')}${pv[0].furtivo ? ' · ataque furtivo!' : ''}</div>` : ''}`;
     }
-    el.innerHTML = `<h3>Previsão</h3><div class="fc"><div><div class="p ${u.lado}" style="background-image:${TOK.px(u.token)}"></div><b style="font-size:12px">${u.nome.split(' ')[0]}</b></div><div class="vs">VS</div><div><div class="p ${o.lado}" style="background-image:${TOK.px(o.token)}"></div><b style="font-size:12px">${o.nome.split(' ')[0]}</b></div></div>${corpo}`;
+    el.innerHTML = `<h3>Previsão</h3><div class="fc"><div><div class="p ${u.lado}" style="background-image:${TOK.px(u.token)}"></div><b style="font-size:12px">${curto(u.nome)}</b></div><div class="vs">VS</div><div><div class="p ${o.lado}" style="background-image:${TOK.px(o.token)}"></div><b style="font-size:12px">${curto(o.nome)}</b></div></div>${corpo}`;
   }
 
   /* ---------- mira de efeitos em área (confirmação) ---------- */
@@ -707,7 +715,7 @@
   function mostrarMira(atingidos, aliados, u) {
     let el = $('mira'); if (!el) { el = document.createElement('div'); el.id = 'mira'; el.className = 'win'; document.body.appendChild(el); }
     const ini = atingidos.filter(x => x.lado !== u.lado);
-    const nomes = l => l.map(x => x.nome.split(' ')[0]).join(', ');
+    const nomes = l => l.map(x => curto(x.nome)).join(', ');
     el.innerHTML = `<div class="mi-t">${ini.length ? `🎯 ${ini.length} inimigo${ini.length > 1 ? 's' : ''}` : '🎯 nenhum inimigo'}${aliados.length ? `<b class="mi-al">⚠ ${nomes(aliados)}</b>` : ''}</div>
       <button class="mi-b ok" id="miOk" title="Confirmar">✓</button><button class="mi-b x" id="miX" title="Cancelar">✕</button>`;
     el.classList.remove('hidden');
@@ -723,7 +731,7 @@
     if (!G.st || (G.mira && G.toque)) return; const c = celulaDoEvento(e); const ant = G.hover;
     if (c && ant && c.x === ant.x && c.y === ant.y) return; G.hover = c; desenharDestaques(); previsao();
     const o = c && R.unidadeEm(G.st, c.x, c.y); const tip = $('tip');
-    if (o) { tip.innerHTML = `<b>${o.nome}</b><br>PV ${Math.max(0, o.pv)}/${o.pvMax}${o.pmMax ? ' · PM ' + o.pm + '/' + o.pmMax : ''} · Def ${R.defesa(G.st, o, null, 'cac').valor}`; tip.classList.remove('hidden'); tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
+    if (o) { tip.innerHTML = `<b>${o.nome}</b><br>PV ${Math.max(0, o.pv)}/${o.pvMax}${o.pmMax ? ' · PM ' + o.pm + '/' + o.pmMax : ''} · Def ${R.defesa(G.st, o, null, 'cac').valor}`; tip.classList.remove('hidden'); const tw = tip.offsetWidth, th = tip.offsetHeight; tip.style.left = (e.clientX + 14 + tw > innerWidth - 8 ? e.clientX - 14 - tw : e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14 + th > innerHeight - 8 ? e.clientY - 14 - th : e.clientY + 14) + 'px'; }
     else tip.classList.add('hidden');
   });
   $('board').addEventListener('mouseleave', () => { if (G.mira) return; G.hover = null; $('tip').classList.add('hidden'); desenharDestaques(); previsao(); });
@@ -857,7 +865,7 @@
     const caidos = herois.filter(u => !u.vivo).map(u => u.nome);
     const linhas = herois.map(u => ({ u, s: G.stats[u.id] || { dano: 0, cura: 0, abates: 0 } }));
     const maxD = Math.max(1, ...linhas.map(l => l.s.dano)); const mvp = linhas.slice().sort((a, b) => (b.s.dano + b.s.cura) - (a.s.dano + a.s.cura))[0];
-    const tabela = `<div class="news">${linhas.map(l => `<div class="st"><b>${l.u.nome.split(' ')[0]}${l === mvp && venceu ? ' ⭐' : ''}</b><span class="bb"><i style="width:${l.s.dano / maxD * 100}%"></i></span><span>${l.s.dano} dano${l.s.cura ? ' · ' + l.s.cura + ' cura' : ''}${l.s.abates ? ' · ' + l.s.abates + '☠' : ''}</span></div>`).join('')}</div>`;
+    const tabela = `<div class="news">${linhas.map(l => `<div class="st"><b>${curto(l.u.nome)}${l === mvp && venceu ? ' ⭐' : ''}</b><span class="bb"><i style="width:${l.s.dano / maxD * 100}%"></i></span><span>${l.s.dano} dano${l.s.cura ? ' · ' + l.s.cura + ' cura' : ''}${l.s.abates ? ' · ' + l.s.abates + '☠' : ''}</span></div>`).join('')}</div>`;
     html += `<p>${venceu ? `${G.encontro.nome} vencida em ${st.rodada} rodadas.` : 'O grupo caiu. Tente outra tática: flanqueie, use cobertura e guarde PM para curar.'}${caidos.length ? `<br>Mortos em combate: ${caidos.join(', ')} (voltam na próxima luta).` : ''}</p>${tabela}`;
     const prox = G.modo === 'campanha' && venceu && G.passo + 1 < D.ENCONTROS.length ? D.ENCONTROS[G.passo + 1] : null;
     if (G.modo === 'campanha' && venceu) { G.camp.passo = Math.max(G.camp.passo, G.passo + 1); store.set('arena.camp', G.camp); }
