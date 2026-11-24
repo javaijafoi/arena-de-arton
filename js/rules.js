@@ -213,7 +213,6 @@
     ini.sort((a, b) => b.r - a.r || (b.u.per.inic - a.u.per.inic));
     st.ordem = ini.map(o => o.u.id);
     st.iniciativa = Object.fromEntries(ini.map(o => [o.u.id, o.r]));
-    st.log.push(`⚔ ${st.mapa.nome}: a batalha começa! Rodada 1.`);
     const ev = []; iniciarTurno(st, ev); st.eventosIniciais = ev;
     return st;
   }
@@ -246,7 +245,7 @@
     if (o && o !== u) { o.x = u.x; o.y = u.y; }
     u.x = x; u.y = y; return null;
   }
-  function comecar(st) { st.preparo = false; }
+  function comecar(st) { st.preparo = false; if (!st.comecou) { st.comecou = true; st.log.unshift(`⚔ ${st.mapa.nome}: a batalha começa! Rodada 1.`); } }
   function posicionar(st, lista, colunas) {
     const linhasPref = [5, 6, 4, 7, 3, 8, 2, 9, 1, 10];
     let k = 0;

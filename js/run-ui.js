@@ -5,6 +5,8 @@
   const D = window.T20DATA, R = window.T20, RUN = window.T20RUN, SOM = window.SOM, A = () => window.ARENA;
   const $ = id => document.getElementById(id);
   const TOK = window.ARENA_TOK;
+  // nome curto para rótulos: tira o título (Sir, Dame) e fica com a primeira palavra
+  const curto = n => String(n || '').replace(/^(Sir|Dame|Lady|Lorde)\s+/, '').split(' ')[0];
   const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* ok */ } } };
   const S = { run: store.get('arena.run', null), meta: Object.assign(RUN.novoMeta(), store.get('arena.meta', {})), sel: null, inv: null, pre: null, res: null };
   if (S.run && S.run.v !== 1) S.run = null;
@@ -43,7 +45,7 @@
   const COR_CLASSE = { guerreiro: '#e0312b', barbaro: '#c0461f', paladino: '#ffc83d', clerigo: '#3b82f6', arcanista: '#9b4dff', cacador: '#3fbf5a', ladino: '#2fae8f', bardo: '#e04fa0', cavaleiro: '#8a8fb0' };
   const corH = he => COR_CLASSE[he.classe] || '#888';
   const face = (tok, cls, st) => `<span class="face-px ${cls || ''}" style="background-image:${PX(tok)};${st || ''}"></span>`;
-  const barra = (titulo, dir) => `<div class="win pbar"><button class="btn sm" id="pbMenu">☰ Menu</button><h2>${titulo}</h2><div class="r">${dir || ''}</div></div>`;
+  const barra = (titulo, dir) => `<div class="win pbar"><button class="btn sm" id="pbMenu">◀ Menu</button><h2>${titulo}</h2><div class="r">${dir || ''}</div></div>`;
   function ligarBarra() { const b = $('pbMenu'); if (b) b.onclick = () => { clique(); voltarAoMenu(); }; }
 
   /* ---------- tela inicial (título do jogo) ---------- */
@@ -57,7 +59,7 @@
     const m = S.meta; const prox = RUN.MARCOS.find(x => m.pontos < x.pts); const andando = S.run && !S.run.fim;
     const gu = RUN.liberado(m, 'guilda');
     const mapa = TOK.mapa('arton-paisagem.png');
-    const herois = grupoDaCapa().map((hid, k) => { const he = H(hid); return `<div class="ti-h" style="--c:${corH(he)};--d:${k * 0.15}s">${face(he.token)}<b>${esc(he.nome.split(' ')[0])}</b><small>${esc(D.CLASSES[he.classe].nome)}</small></div>`; }).join('');
+    const herois = grupoDaCapa().map((hid, k) => { const he = H(hid); return `<div class="ti-h" style="--c:${corH(he)};--d:${k * 0.15}s">${face(he.token)}<b>${curto(esc(he.nome))}</b><small>${esc(D.CLASSES[he.classe].nome)}</small></div>`; }).join('');
     let h = `<div class="ti">
       <div class="ti-cena" style="${mapa ? `background-image:url('${mapa}')` : ''}">
         <div class="ti-logo"><small>Tormenta 20 · simulador tático</small><h1>Arena<br>de Arton</h1></div>
@@ -151,7 +153,7 @@
     for (let i = 0; i < 4; i++) {
       const id = P.grupo[i];
       if (!id) { h += `<div class="vaga vazia">+</div>`; continue; }
-      const he = H(id); h += `<button class="vaga${id === P.ver ? ' on' : ''}" data-ver="${id}"><span class="n">${i + 1}</span>${face(he.token)}<div><b>${esc(he.nome.split(' ')[0])}</b><small>${D.CLASSES[he.classe].nome}</small></div></button>`;
+      const he = H(id); h += `<button class="vaga${id === P.ver ? ' on' : ''}" data-ver="${id}"><span class="n">${i + 1}</span>${face(he.token)}<div><b>${curto(esc(he.nome))}</b><small>${D.CLASSES[he.classe].nome}</small></div></button>`;
     }
     h += '</div>';
     const habs = (u.habilidades || []).map(k => D.HABILIDADES[k]).filter(Boolean);
@@ -201,7 +203,7 @@
   /* ---------- cabeçalho comum (grupo, nível, recursos) ---------- */
   function cabecalho(titulo) {
     const run = S.run; const xp0 = RUN.XP_NIVEL[run.nivel], xp1 = RUN.XP_NIVEL[run.nivel + 1] || xp0 + 1;
-    let h = `<div class="rv-head"><button class="btn sm" id="pbMenu">☰ Menu</button><h2>${titulo}</h2><div class="party">`;
+    let h = `<div class="rv-head"><button class="btn sm" id="pbMenu">◀ Menu</button><h2>${titulo}</h2><div class="party">`;
     run.herois.forEach((x, hi) => {
       const he = H(x.hid); const pvM = RUN.pvMaxDe(x, run.nivel), pmM = RUN.pmMaxDe(x, run.nivel); const pv = pvM - x.dano, pm = pmM - x.pmGasto;
       h += `<button class="pc${x.morto ? ' dead' : ''}" data-inv="${hi}" title="${esc(he.nome)}: ver itens${x.pend > 0 && !x.morto ? ' (poder para escolher)' : ''}"><span class="f" style="background-image:${PX(he.token)}">${x.pend > 0 && !x.morto ? '<b class="pend">⬆</b>' : ''}</span><span class="bars">${x.morto ? '<b class="dd">MORTO</b>' : `<i class="hp"><i style="width:${pv / pvM * 100}%"></i></i><small>${pv}/${pvM}</small><i class="mp"><i style="width:${pmM ? pm / pmM * 100 : 0}%"></i></i>`}</span></button>`;
@@ -250,7 +252,7 @@
     h += '<div class="pmapa"><div class="pm-herois">';
     run.herois.forEach((x, hi) => {
       const he = H(x.hid); const pvM = RUN.pvMaxDe(x, run.nivel), pmM = RUN.pmMaxDe(x, run.nivel); const pv = pvM - x.dano, pm = pmM - x.pmGasto;
-      h += `<button class="htab${x.morto ? ' morto' : ''}" data-inv="${hi}" style="--c:${corH(he)}" title="${esc(he.nome)}: ver itens">${face(he.token)}<div class="t">${esc(he.nome.split(' ')[0])}${x.morto ? ' ✝' : x.pend > 0 ? ' ⬆' : ''}<div class="b"><i style="width:${x.morto ? 0 : pv / pvM * 100}%;${pv / pvM < .35 ? 'background:var(--red)' : ''}"></i></div><div class="b bm"><i style="width:${pmM ? pm / pmM * 100 : 0}%"></i></div></div></button>`;
+      h += `<button class="htab${x.morto ? ' morto' : ''}" data-inv="${hi}" style="--c:${corH(he)}" title="${esc(he.nome)}: ver itens">${face(he.token)}<div class="t">${curto(esc(he.nome))}${x.morto ? ' ✝' : x.pend > 0 ? ' ⬆' : ''}<div class="b"><i style="width:${x.morto ? 0 : pv / pvM * 100}%;${pv / pvM < .35 ? 'background:var(--red)' : ''}"></i></div><div class="b bm"><i style="width:${pmM ? pm / pmM * 100 : 0}%"></i></div></div></button>`;
     });
     h += `<div class="win pm-res">Nível <b class="gold">${run.nivel}</b><br>✦ XP ${run.xp.toLocaleString('pt-BR')} / ${xp1.toLocaleString('pt-BR')}<br>⛺ Barracas ${run.bolsa.barraca}${run.merc ? `<br>🤝 ${esc(RUN.NPC_MERC[run.merc.tipo].nome)} (mercenário)` : ''}<button class="btn sm" id="hInv">🎒 Itens</button></div></div>`;
     // mapa
@@ -273,7 +275,7 @@
       const tipo = n.tipo === 'evento' && n.visitado ? 'evento' : n.tipo;
       const rosto = (ids.has(n.id) || n.tipo === 'chefe' || cam.has(n.id)) ? rostoDoNo(run, n) : null;
       const dentro = rosto ? face(rosto) : pxi(tipo);
-      const rot = n.tipo === 'chefe' ? esc(n.nome || 'Chefe') : (ids.has(n.id) || n.id === S.sel) ? esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo]) : n.tipo === 'inicio' ? esc(RUN.ANDARES[run.andar || 1].inicio) : '';
+      const rot = n.tipo === 'chefe' ? esc(n.nome || 'Chefe') : (ids.has(n.id) || n.id === S.sel) ? esc(n.tipo === 'evento' ? 'Evento' : n.nome || NOME_TIPO[n.tipo]) : '';
       nos += `<div class="nd ${st}${n.tipo === 'chefe' ? ' chefe' : ''}${S.sel === n.id ? ' sel' : ''}" style="left:${p.x}%;top:${p.y}%"><button class="f" data-no="${n.id}" style="--c:${COR_NO[tipo] || '#555'}" aria-label="${esc(NOME_TIPO[tipo] || tipo)}">${dentro}</button>${rot ? `<span class="l">${rot}</span>` : ''}</div>`;
     }
     const pa = posNo(run.mapa.nos[run.atual], retrato);
@@ -372,7 +374,7 @@
     let h = cabecalho('Cidade') + `<div class="win box center-box"><small class="tag">Andar ${run.andar} limpo</small><h2>Uma cidade no caminho</h2>
       <p>O grupo dorme em camas de verdade: <b>PV e PM voltam ao máximo</b> ao partir. O templo da cidade traz de volta quem caiu, se houver ouro.</p><div class="rest">`;
     run.herois.forEach((x, hi) => { if (!x.morto) return; const he = H(x.hid);
-      h += `<button class="restc" data-rev="${hi}" ${run.ouro >= custo ? '' : 'disabled'}><b>⛪ Reviver ${esc(he.nome.split(' ')[0])}</b><span>${esc(D.CLASSES[he.classe].nome)} volta à vida com PV cheios.</span><small>T$ ${custo}</small></button>`; });
+      h += `<button class="restc" data-rev="${hi}" ${run.ouro >= custo ? '' : 'disabled'}><b>⛪ Reviver ${curto(esc(he.nome))}</b><span>${esc(D.CLASSES[he.classe].nome)} volta à vida com PV cheios.</span><small>T$ ${custo}</small></button>`; });
     if (!run.herois.some(x => x.morto)) h += '<p class="mut">Ninguém caiu neste andar.</p>';
     h += `</div><p>Próximo: <b>andar ${run.andar + 1} · ${esc(prox.nome)}</b>, até o nível ${prox.teto}${run.andar + 1 >= RUN.ULTIMO_ANDAR ? ' e o chefe final' : ''}.</p>
       <div class="merc-box">${blocoMerc(run)}</div>
@@ -401,12 +403,12 @@
   function telaInventario(hi, volta) {
     const run = S.run; S.inv = { hi, volta }; const x = run.herois[hi]; const he = H(x.hid);
     const slot = (s, nome) => { const id = x.equip[s]; return `<button class="slot${id ? ' full' : ''}" data-tira="${s}" ${id ? '' : 'disabled'}><small>${nome}</small>${id ? `<b>${I(id).ic} ${esc(I(id).nome)}</b><em>${esc(I(id).desc)}</em>` : '<b class="mut">vazio</b>'}</button>`; };
-    let h = cabecalho('Itens do grupo') + `<div class="rv-grid2"><div class="win box"><div class="tabs">${run.herois.map((y, k) => `<button class="tab${k === hi ? ' on' : ''}${y.morto ? ' dead' : ''}" data-tab="${k}"><span class="f" style="background-image:${PX(H(y.hid).token)}"></span>${esc(H(y.hid).nome.split(' ')[0])}</button>`).join('')}</div>
+    let h = cabecalho('Itens do grupo') + `<div class="rv-grid2"><div class="win box"><div class="tabs">${run.herois.map((y, k) => `<button class="tab${k === hi ? ' on' : ''}${y.morto ? ' dead' : ''}" data-tab="${k}"><span class="f" style="background-image:${PX(H(y.hid).token)}"></span>${curto(esc(H(y.hid).nome))}</button>`).join('')}</div>
       <h3>${esc(he.nome)} <small>${D.CLASSES[he.classe].nome} ${run.nivel}${x.morto ? ' · morto' : ''}</small></h3>
       <div class="slots">${slot('arma', 'Arma')}${slot('armadura', 'Armadura')}${slot('acessorio', 'Acessório')}</div>
       <h3>Cinto <small>(até 3, usados na batalha)</small></h3><div class="slots c3">${x.cinto.map((id, k) => `<button class="slot${id ? ' full' : ''}" data-tira="cinto${k}" ${id ? '' : 'disabled'}><small>Cinto ${k + 1}</small>${id ? `<b>${I(id).ic} ${esc(I(id).nome)}</b>` : '<b class="mut">vazio</b>'}</button>`).join('')}</div>
       <p class="mut">Clique num item equipado para guardá-lo na mochila.</p></div>
-      <div class="win box"><h3>Mochila do grupo</h3>${run.mochila.length ? '<div class="bau">' + run.mochila.map((id, k) => `<button class="itm" data-poe="${k}" ${x.morto ? 'disabled' : ''}><span>${I(id).ic}</span>${esc(I(id).nome)}<em>${esc(I(id).desc)}</em></button>`).join('') + '</div><p class="mut">Clique num item para equipar em ' + esc(he.nome.split(' ')[0]) + '.</p>' : '<p class="mut">Vazia.</p>'}
+      <div class="win box"><h3>Mochila do grupo</h3>${run.mochila.length ? '<div class="bau">' + run.mochila.map((id, k) => `<button class="itm" data-poe="${k}" ${x.morto ? 'disabled' : ''}><span>${I(id).ic}</span>${esc(I(id).nome)}<em>${esc(I(id).desc)}</em></button>`).join('') + '</div><p class="mut">Clique num item para equipar em ' + curto(esc(he.nome)) + '.</p>' : '<p class="mut">Vazia.</p>'}
       <h3>Bolsa</h3><p>🍖 ${run.bolsa.racao} rações · ⛺ ${run.bolsa.barraca} barraca · 🪢 ${run.bolsa.corda || 0} corda</p>
       <button class="btn gold" id="iOk">✓ Pronto</button></div></div>`;
     mostrar(h, 'inv'); ligarCabecalho(volta);
@@ -423,7 +425,7 @@
     const disp = x.pend > 0 && !x.morto ? RUN.poderesDisponiveis(run, hi) : [];
     const grupoTipo = { classe: 'De ' + D.CLASSES[he.classe].nome.toLowerCase(), geral: 'Gerais', magia: 'Magia' };
     const tem = {}; for (const p of x.poderes) tem[p] = (tem[p] || 0) + 1;
-    let h = cabecalho('Poderes') + `<div class="rv-grid2"><div class="win box"><div class="tabs">${run.herois.map((y, k) => `<button class="tab${k === hi ? ' on' : ''}${y.morto ? ' dead' : ''}" data-tab="${k}"><span class="f" style="background-image:${PX(H(y.hid).token)}"></span>${esc(H(y.hid).nome.split(' ')[0])}${y.pend > 0 && !y.morto ? ' ⬆' + y.pend : ''}</button>`).join('')}</div>
+    let h = cabecalho('Poderes') + `<div class="rv-grid2"><div class="win box"><div class="tabs">${run.herois.map((y, k) => `<button class="tab${k === hi ? ' on' : ''}${y.morto ? ' dead' : ''}" data-tab="${k}"><span class="f" style="background-image:${PX(H(y.hid).token)}"></span>${curto(esc(H(y.hid).nome))}${y.pend > 0 && !y.morto ? ' ⬆' + y.pend : ''}</button>`).join('')}</div>
       <h3>${esc(he.nome)} <small>${D.CLASSES[he.classe].nome} ${run.nivel}</small></h3>
       <p class="mut">Em Tormenta20 o herói ganha um poder por nível a partir do 2º. Aqui estão os do Livro Base que valem no tabuleiro. Poderes que no livro custam PM ou dão penalidade são usados sozinhos quando compensam.</p>
       ${x.poderes.length ? '<div class="bau">' + Object.keys(tem).map(id => `<div class="itm"><span>✦</span>${esc(P.PODERES[id].nome)}${tem[id] > 1 ? ' ×' + tem[id] : ''}<em>${esc(P.PODERES[id].desc)}</em></div>`).join('') + '</div>' : '<p class="mut">Nenhum poder ainda.</p>'}
@@ -578,7 +580,7 @@
       }
       h += '</div><p class="mut">O cofre enche com o ouro que sobra das runs vencidas (e 25% das perdidas, com o Banco).</p>';
     }
-    h += `<h3 style="margin-top:12px">Histórico</h3>${m.historico.length ? '<div class="hist">' + m.historico.slice(0, 6).map(x => `<div>${x.venceu ? '🏆' : '💀'} nível ${x.nivel} · +${ptsTxt(x.pts)} pts · ${x.herois.map(hid => H(hid).nome.split(' ')[0]).join(', ')}</div>`).join('') + '</div>' : '<p class="mut">Nenhuma run ainda.</p>'}`;
+    h += `<h3 style="margin-top:12px">Histórico</h3>${m.historico.length ? '<div class="hist">' + m.historico.slice(0, 6).map(x => `<div>${x.venceu ? '🏆' : '💀'} nível ${x.nivel} · +${ptsTxt(x.pts)} pts · ${x.herois.map(hid => curto(H(hid).nome)).join(', ')}</div>`).join('') + '</div>' : '<p class="mut">Nenhuma run ainda.</p>'}`;
     h += '</div></div>';
     mostrar(h, 'guilda'); ligarBarra();
     ligar('[data-sala]', d => telaGuilda(d.sala));
@@ -597,5 +599,7 @@
     window.NUVEM.ouvir(() => { montarBlocoMenu(); });
     window.NUVEM.puxar().then(d => { if (d) { aplicarNuvem(d); montarBlocoMenu(); } else if (!store.get('arena.salvoEm', 0) && (S.meta.runs || S.run)) salvar(); });
   }
+  // pré-carrega os retratos dos heróis e da guilda para não aparecer o emblema por um instante
+  setTimeout(() => { const base = window.ARENA_CONFIG.pixelBase; if (!base) return; for (const t of new Set(D.HEROIS.map(h => h.token).concat(['aegoron', 'dame-lia', 'mari-labareda', 'capanga', 'durgalinn', 'hanalendariana', 'zaldrin']))) { const i = new Image(); i.src = base + t + '.png'; } }, 0);
   window.RUNUI = { S, telaInicio, vestirTreino, telaLoja, telaDescanso, telaEvento, telaFim, telaResultado, telaPreBatalha, telaInventario, telaMapa, telaPre, telaGuilda, telaCidade, telaPoderes, continuar, voltarDaBatalha, montarBlocoMenu, salvar };
 })();
